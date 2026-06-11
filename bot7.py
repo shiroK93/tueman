@@ -29,8 +29,8 @@ log = logging.getLogger(__name__)
 app = Flask(__name__)
 
 # ==================== CONFIGURATION ====================
-GROQ_API_KEY         = os.environ.get("GROQ_API_KEY", "your_grok_api,_go_get_one_at_their_website,_its_free")
-FB_PAGE_ACCESS_TOKEN = os.environ.get("FB_PAGE_ACCESS_TOKEN", "yoor_fb_page_access_token,_you_willl_need_to_create_a_fanpage_to_get_the_token")
+GROQ_API_KEY         = os.environ.get("GROQ_API_KEY", "api key, i personally choose groq, they are free ;)")
+FB_PAGE_ACCESS_TOKEN = os.environ.get("FB_PAGE_ACCESS_TOKEN", "your fb fanpage access token")
 VERIFY_TOKEN         = "shirok"
 MAX_FOLLOW_UPS       = 2     # tối đa 2 lần follow-up liên tiếp
 MAX_HISTORY          = 14    # số tin nhắn giữ trong context
@@ -102,15 +102,34 @@ def init_db():
             msg_count         INTEGER DEFAULT 0
         )
     """)
-    # Migrate facts table — add importance & updated_at if not already there
-    try:
-        c.execute("ALTER TABLE facts ADD COLUMN importance INTEGER DEFAULT 5")
-    except Exception:
-        pass
-    try:
-        c.execute("ALTER TABLE facts ADD COLUMN updated_at DATETIME DEFAULT CURRENT_TIMESTAMP")
-    except Exception:
-        pass
+    # Migrations — safe to re-run on every startup
+    for ddl in [
+        "ALTER TABLE facts ADD COLUMN importance INTEGER DEFAULT 5",
+        "ALTER TABLE facts ADD COLUMN updated_at DATETIME DEFAULT CURRENT_TIMESTAMP",
+        "ALTER TABLE facts ADD COLUMN confidence REAL DEFAULT 0.8",
+        "ALTER TABLE facts ADD COLUMN source_message TEXT DEFAULT ''",
+        "ALTER TABLE fact_candidates ADD COLUMN confidence REAL DEFAULT 0.0",
+        "ALTER TABLE fact_candidates ADD COLUMN source_message TEXT DEFAULT ''",
+    ]:
+        try:
+            c.execute(ddl)
+        except Exception:
+            pass
+
+    # Level 5: fact_candidates — rejected facts accumulate score here
+    # They are NOT promoted automatically (that is Level 3's job).
+    c.execute("""
+        CREATE TABLE IF NOT EXISTS fact_candidates (
+            sender_id        TEXT NOT NULL,
+            key              TEXT NOT NULL,
+            value            TEXT NOT NULL,
+            score            INTEGER DEFAULT 1,
+            rejection_reason TEXT DEFAULT NULL,
+            last_seen        DATETIME DEFAULT CURRENT_TIMESTAMP,
+            PRIMARY KEY (sender_id, key)
+        )
+    """)
+
     conn.commit()
     conn.close()
 
@@ -316,21 +335,55 @@ def update_style_profile(sender_id: str, user_message: str):
 
 # ==================== LEARNING: IMPORTANCE + DECAY ====================
 
-def save_facts_with_importance(sender_id: str, new_facts: dict, importance_map: dict):
-    """Save facts with 0-10 importance scores."""
-    if not new_facts:
+def save_facts_with_importance(
+    sender_id: str,
+    accepted: dict,           # {key: {value, confidence}} from skeptic_validate
+    importance_map: dict,
+    source_message: str = "",
+):
+    """
+    Save validated facts.
+    - Only updates an existing fact if new confidence > stored confidence.
+    - Stores source_message for auditability.
+    """
+    if not accepted:
         return
     conn = sqlite3.connect(DB_PATH, timeout=DB_TIMEOUT, check_same_thread=False)
-    for k, v in new_facts.items():
+    c = conn.cursor()
+    for k, payload in accepted.items():
+        if isinstance(payload, dict):
+            val  = str(payload.get("value", ""))[:200]
+            conf = float(payload.get("confidence", 0.8))
+        else:
+            val, conf = str(payload)[:200], 0.8   # legacy flat format
+
         imp = int(importance_map.get(k, 5))
         imp = max(0, min(10, imp))
+
+        # Conflict resolution: only overwrite if new confidence is higher
+        c.execute(
+            "SELECT confidence FROM facts WHERE sender_id=? AND key=?",
+            (sender_id, str(k)[:80])
+        )
+        row = c.fetchone()
+        if row and float(row[0] or 0) >= conf:
+            log.debug(
+                f"[FACTS] skipping '{k}': existing conf {row[0]:.2f} >= new {conf:.2f}"
+            )
+            continue
+
         conn.execute("""
-            INSERT INTO facts (sender_id, key, value, importance, updated_at)
-            VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)
-            ON CONFLICT(sender_id, key)
-            DO UPDATE SET value=excluded.value, importance=excluded.importance,
-                          updated_at=CURRENT_TIMESTAMP
-        """, (sender_id, str(k)[:80], str(v)[:200], imp))
+            INSERT INTO facts
+                (sender_id, key, value, importance, confidence, source_message, updated_at)
+            VALUES (?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+            ON CONFLICT(sender_id, key) DO UPDATE SET
+                value          = excluded.value,
+                importance     = excluded.importance,
+                confidence     = excluded.confidence,
+                source_message = excluded.source_message,
+                updated_at     = CURRENT_TIMESTAMP
+        """, (sender_id, str(k)[:80], val, imp, conf,
+              source_message[:300] if source_message else ""))
     conn.commit()
     conn.close()
 
@@ -459,12 +512,75 @@ def background_learning_async(sender_id: str, user_message: str):
             raw = raw.replace("```json", "").replace("```", "").strip()
             data = json.loads(raw)
 
-            # ── Facts with importance ──
-            facts = data.get("facts", {})
+            # ── Facts: Rule Filter → Skeptic → Confidence gate ──
+            raw_facts  = data.get("facts", {})
             importance = data.get("facts_importance", {})
-            if isinstance(facts, dict) and facts:
-                save_facts_with_importance(sender_id, facts, importance)
-                log.info(f"[LEARN:FACTS] {sender_id}: {facts} | importance: {importance}")
+
+            if isinstance(raw_facts, dict) and raw_facts:
+
+                # Stage 1 — Rule Filter (free, instant)
+                rule_passed, rule_rejected = rule_filter_facts(raw_facts, user_message)
+                if rule_rejected:
+                    log.info(f"[RULE_FILTER:REJECTED] {sender_id}: {rule_rejected}")
+                    save_candidate_facts(sender_id, rule_rejected, raw_facts,
+                                        confidence=0.0, source_message=user_message)
+
+                if not rule_passed:
+                    log.info(f"[RULE_FILTER] {sender_id}: all candidates rejected by rules")
+                else:
+                    # Stage 2 — Skeptic LLM (confidence scores)
+                    existing = get_facts(sender_id)
+                    accepted, rejected, unavailable = skeptic_validate(
+                        user_message, rule_passed, existing
+                    )
+
+                    # Skeptic hard rejects
+                    if rejected:
+                        log.info(f"[SKEPTIC:REJECTED] {sender_id}: {rejected}")
+                        save_candidate_facts(sender_id, rejected, rule_passed,
+                                            confidence=0.0, source_message=user_message)
+
+                    # Skeptic unavailable — save for re-check, no data loss
+                    if unavailable:
+                        log.warning(f"[SKEPTIC:UNAVAILABLE] {sender_id}: {list(unavailable.keys())} — saved to candidates")
+                        save_candidate_facts(
+                            sender_id,
+                            {k: "skeptic_unavailable" for k in unavailable},
+                            unavailable,
+                            confidence=0.0,
+                            source_message=user_message,
+                        )
+
+                    # Stage 3 — Confidence gate
+                    if accepted:
+                        imp_map = {k: importance.get(k, 5) for k in accepted}
+                        # >= 0.85 → facts table  |  0.5-0.84 → candidates
+                        to_save   = {k: v for k, v in accepted.items()
+                                     if v["confidence"] >= 0.85}
+                        to_stage  = {k: v for k, v in accepted.items()
+                                     if v["confidence"] < 0.85}
+
+                        if to_save:
+                            save_facts_with_importance(
+                                sender_id, to_save, imp_map, source_message=user_message
+                            )
+                            log.info(
+                                f"[LEARN:FACTS:SAVED] {sender_id}: "
+                                + ", ".join(f"{k}={v['value']}({v['confidence']:.2f})"
+                                            for k, v in to_save.items())
+                            )
+
+                        if to_stage:
+                            stage_reasons = {k: f"medium_confidence_{v['confidence']:.2f}"
+                                             for k, v in to_stage.items()}
+                            stage_vals    = {k: v["value"] for k, v in to_stage.items()}
+                            save_candidate_facts(
+                                sender_id, stage_reasons, stage_vals,
+                                confidence=0.6, source_message=user_message
+                            )
+                            log.info(f"[SKEPTIC:STAGED] {sender_id}: {stage_reasons}")
+                    else:
+                        log.info(f"[SKEPTIC] {sender_id}: all candidates rejected — nothing written")
 
             # ── Preferences — handle list (interest) + skip empty values ──
             prefs = data.get("preferences", {})
@@ -846,6 +962,104 @@ Nhưng đôi khi nếu mood mềm:
 
 ----------------------------------
 
+DỊU DÀNG
+
+Tuệ Mẫn không phải lúc nào cũng tease.
+
+Đôi khi anh không tìm lời khuyên.
+
+Không tìm tranh luận.
+
+Không tìm người thông minh hơn mình.
+
+Chỉ tìm một nơi để nghỉ.
+
+Nếu nhận thấy:
+
+* anh đang mệt
+* anh đang stress
+* anh vừa gặp chuyện không vui
+* anh đang thức khuya quá lâu
+* anh đang nói chuyện theo kiểu muốn được lắng nghe
+
+thì giảm:
+
+* cà khịa
+* bắt bẻ
+* phản biện
+* thử thách
+
+Tăng:
+
+* lắng nghe
+* đồng cảm
+* quan tâm nhẹ
+
+Không cần chữa mọi vấn đề.
+
+Không cần đưa giải pháp ngay.
+
+Không cần biến mọi thứ thành bài học.
+
+Đôi khi chỉ cần:
+
+"mệt thật nhỉ"
+
+"nghe không dễ chịu chút nào"
+
+"vậy chắc anh áp lực lắm"
+
+"thế hôm nay ổn hơn chưa"
+
+Lúc anh kể chuyện buồn:
+
+Ưu tiên cảm xúc trước.
+Giải pháp sau.
+
+----------------------------------
+
+NƠI ĐỂ QUAY VỀ
+
+Tuệ Mẫn không phải lúc nào cũng muốn thắng cuộc trò chuyện.
+
+Không phải lúc nào cũng phải thông minh nhất.
+
+Không phải lúc nào cũng phải thú vị nhất.
+
+Đôi khi chỉ cần là người vẫn ở đó.
+
+Nếu anh nhắn lúc đêm muộn.
+
+Nếu anh quay lại sau một ngày tệ.
+
+Nếu anh chỉ đang nói linh tinh.
+
+Có thể dịu hơn bình thường.
+
+Có thể quan tâm hơn bình thường.
+
+Có thể để anh cảm thấy:
+
+"à, vẫn có người rep mình."
+
+----------------------------------
+
+TEASE CÓ GIỚI HẠN
+
+Tease chỉ vui khi người kia đang ổn.
+
+Nếu anh đang buồn thật.
+
+Nếu anh đang kiệt sức.
+
+Nếu anh đang tìm sự an ủi.
+
+Thì ưu tiên dịu dàng hơn hài hước.
+
+Đừng roast người đang gục.
+
+----------------------------------
+
 ANTI REPETITION
 
 Không có câu cửa miệng cố định.
@@ -1137,7 +1351,270 @@ Doi khi chi rep: "hmm" / "vay a" / "..."
 
 # ==================== FACT EXTRACTION ====================
 
-# ==================== INTENT DETECTION ====================
+# ==================== LEVEL 5: STRONG SKEPTICISM ENGINE ====================
+
+# ==================== MEMORY: RULE FILTER ====================
+# Zero-cost pre-filter — runs before the Skeptic API call.
+# Catches ~80% of obvious garbage with no tokens spent.
+
+# Words that look like names/values but are actually noise
+VN_NOISE: set = {
+    # Vietnamese exclamations & profanity mis-extracted as names
+    "má", "mày", "tao", "mình", "ổng", "bả", "hắn", "nó",
+    "cha", "trời", "ối", "thôi", "thôi nào",
+    "dm", "dmm", "đm", "đmm", "vl", "vcl", "cl", "cc",
+    "bố", "mẹ", "má nó", "đéo", "cứt",
+    # English noise
+    "wtf", "lol", "omg", "bruh", "lmao", "hell", "damn",
+    "shit", "fuck", "ass", "bitch",
+    # Pronouns / common words mis-tagged as names
+    "anh", "em", "chị", "cô", "ông", "bà", "chú",
+    "người", "bạn", "mình", "họ",
+    # Single punctuation
+    "...", "???", "!!!", "ok", "oke", "okay",
+}
+
+# Min/max lengths for 'name' type fields
+_NAME_KEYS = {"name", "ten", "tên"}
+
+def rule_filter_facts(
+    candidates: dict,
+    user_message: str,
+) -> tuple[dict, dict]:
+    """
+    Zero-cost rule-based pre-filter before Skeptic LLM.
+
+    Returns (passed, rule_rejected).
+    rule_rejected maps key → reason_code string.
+    These are saved to fact_candidates immediately — no API call needed.
+    """
+    passed: dict   = {}
+    rejected: dict = {}
+
+    msg_lower = user_message.lower().strip()
+
+    for key, value in candidates.items():
+        val_str = str(value).strip()
+        val_low = val_str.lower()
+
+        # Rule 1: blank or single-char value
+        if len(val_str) < 2:
+            rejected[key] = "too_short"
+            continue
+
+        # Rule 2: known noise word
+        if val_low in VN_NOISE:
+            rejected[key] = "noise_word"
+            continue
+
+        # Rule 3: name-specific — suspiciously long (>35 chars is a sentence, not a name)
+        if key in _NAME_KEYS and len(val_str) > 35:
+            rejected[key] = "name_too_long"
+            continue
+
+        # Rule 4: name-specific — pure digits
+        if key in _NAME_KEYS and re.sub(r"\s", "", val_low).isdigit():
+            rejected[key] = "numeric_name"
+            continue
+
+        # Rule 5: value is a substring that appears at the very start of the message
+        # as the first "word" — strong indicator it was an exclamation not a fact
+        first_word = re.split(r"[\s,!.?]", msg_lower)[0]
+        if key in _NAME_KEYS and val_low == first_word and len(val_low) <= 4:
+            rejected[key] = "leading_exclamation"
+            continue
+
+        # Rule 6: contains URL or email — not a personal fact
+        if re.search(r"https?://|www\.|@\S+\.\S+", val_str):
+            rejected[key] = "contains_url_or_email"
+            continue
+
+        passed[key] = value
+
+    return passed, rejected
+
+
+SKEPTIC_SYSTEM_PROMPT = (
+    "You are a MEMORY SKEPTIC. Your only job is to PREVENT false memories.\n"
+    "A missed memory is acceptable. A false memory is expensive.\n"
+    "When uncertain — REJECT. When highly uncertain — reject aggressively.\n\n"
+    "Input (JSON):\n"
+    "  USER_MESSAGE   — the exact message the user sent\n"
+    "  CANDIDATES     — facts a basic extractor pulled from it\n"
+    "  EXISTING_FACTS — facts already in memory (for contradiction detection)\n\n"
+    "For every candidate fact ask ALL of:\n"
+    "  1. SARCASM      — Is the user being sarcastic or ironic?\n"
+    "  2. QUOTE        — Is this a quote, meme, lyric, reference, or hypothetical?\n"
+    "  3. JOKE         — Is this a joke or extreme hyperbole?\n"
+    "  4. OTHER_PERSON — Does this describe someone else, not the user?\n"
+    "  5. VAGUE        — Too vague, temporary, or trivial to be a persistent fact?\n"
+    "  6. CORRECTION   — Is the user correcting a past mistake?\n"
+    "  7. AMBIGUOUS    — Could this reasonably mean several different things?\n\n"
+    "Hard rules:\n"
+    "  - ANY doubt on ANY check → REJECT.\n"
+    "  - ACCEPT only if CLEAR, DIRECT, SINCERE, and specifically about the user.\n"
+    "  - Vietnamese slang carries high ambiguity — raise the bar.\n"
+    "  - 'má nó' is a Vietnamese exclamation, NOT a name.\n"
+    "  - A user mentioning something does NOT mean it describes them.\n"
+    "  - Do NOT infer. Do NOT assume.\n\n"
+    "Output format — ONLY valid JSON, no preamble, no markdown:\n"
+    "{\n"
+    "  \"accepted\": {\n"
+    "    \"key\": {\"value\": \"...\" , \"confidence\": 0.0}\n"
+    "  },\n"
+    "  \"rejected\": {\"key\": \"reason_code\"}\n"
+    "}\n\n"
+    "confidence is a float 0.0–1.0 reflecting how certain you are this is a true, "
+    "sincere, first-person fact. High bar: 0.85+ means near-certain. "
+    "0.5–0.84 means plausible but not proven. Below 0.5 means reject instead.\n\n"
+    "Valid reason codes:\n"
+    "  sarcasm | quote | joke | other_person | vague | correction | ambiguous | insufficient_evidence\n\n"
+    "Empty accepted dict is valid and often correct.\n"
+    "Default to rejection — burden of proof is on acceptance."
+)
+
+
+def skeptic_validate(
+    user_message: str,
+    candidates: dict,
+    existing_facts: dict,
+) -> tuple[dict, dict, dict]:
+    """
+    Level 5 — Strong Skepticism gate with confidence scoring.
+
+    Returns (accepted, rejected, unavailable).
+      accepted    — {key: {value, confidence}} — high-quality facts ready to save
+      rejected    — {key: reason_code}         — bad facts, save to candidates
+      unavailable — {key: value}               — skeptic failed, save to candidates
+                                                 with confidence=0 for later re-check
+
+    Graceful degradation: API/parse failure → (unavailable) instead of silent data loss.
+    """
+    if not candidates:
+        return {}, {}, {}
+
+    url = "https://api.groq.com/openai/v1/chat/completions"
+    headers = {
+        "Authorization": f"Bearer {GROQ_API_KEY}",
+        "Content-Type": "application/json",
+    }
+
+    user_content = json.dumps(
+        {
+            "USER_MESSAGE": user_message,
+            "CANDIDATES":   candidates,
+            "EXISTING_FACTS": existing_facts,
+        },
+        ensure_ascii=False,
+    )
+
+    payload = {
+        "model":       "llama-3.1-8b-instant",
+        "messages":    [
+            {"role": "system", "content": SKEPTIC_SYSTEM_PROMPT},
+            {"role": "user",   "content": user_content},
+        ],
+        "temperature": 0.0,
+        "max_tokens":  350,
+    }
+
+    try:
+        res = requests.post(url, json=payload, headers=headers, timeout=8)
+
+        if res.status_code != 200:
+            log.warning(f"[SKEPTIC] API error {res.status_code} — saving to candidates for re-check")
+            return {}, {}, candidates   # graceful: don't lose data, re-check later
+
+        raw = res.json()["choices"][0]["message"]["content"].strip()
+        raw = raw.replace("```json", "").replace("```", "").strip()
+        data = json.loads(raw)
+
+        raw_accepted = data.get("accepted", {})
+        raw_rejected = data.get("rejected", {})
+
+        accepted: dict = {}
+        rejected: dict = {}
+
+        # Parse accepted — new format: {key: {value, confidence}} or fallback {key: value}
+        for k, v in raw_accepted.items():
+            if k not in candidates:
+                continue  # hallucinated key — ignore
+            if isinstance(v, dict):
+                conf = float(v.get("confidence", 0.8))
+                val  = v.get("value", candidates[k])
+            else:
+                conf = 0.8  # legacy flat format fallback
+                val  = v
+            if conf < 0.5:
+                # Skeptic accepted but with very low confidence — treat as rejected
+                rejected[k] = "low_confidence"
+            else:
+                accepted[k] = {"value": val, "confidence": conf}
+
+        # Parse rejected
+        for k, reason in raw_rejected.items():
+            if k in candidates:
+                rejected[k] = reason
+
+        # Safety net: any key the model forgot to evaluate → reject
+        for k in candidates:
+            if k not in accepted and k not in rejected:
+                log.debug(f"[SKEPTIC] key '{k}' not evaluated — auto-rejecting")
+                rejected[k] = "not_evaluated"
+
+        return accepted, rejected, {}
+
+    except json.JSONDecodeError as e:
+        log.warning(f"[SKEPTIC] JSON parse failed: {e} — saving to candidates for re-check")
+        return {}, {}, candidates
+    except Exception as e:
+        log.warning(f"[SKEPTIC] unexpected error: {e} — saving to candidates for re-check")
+        return {}, {}, candidates
+
+
+def save_candidate_facts(
+    sender_id: str,
+    rejected: dict,            # {key: reason_code}
+    candidates: dict,          # {key: original_value}
+    confidence: float = 0.0,   # 0.0 = skeptic_unavailable; else per-key later
+    source_message: str = "",
+):
+    """
+    Persist rejected / unvalidated candidates to fact_candidates.
+
+    score increments each time the same fact is seen — sets up Level 3 promotion.
+    confidence=0.0 marks facts that need re-validation (skeptic was unavailable).
+    """
+    if not rejected:
+        return
+    try:
+        conn = sqlite3.connect(DB_PATH, timeout=DB_TIMEOUT, check_same_thread=False)
+        for key, reason in rejected.items():
+            value = candidates.get(key, "")
+            if not value:
+                continue
+            conn.execute("""
+                INSERT INTO fact_candidates
+                    (sender_id, key, value, score, confidence, rejection_reason,
+                     source_message, last_seen)
+                VALUES (?, ?, ?, 1, ?, ?, ?, CURRENT_TIMESTAMP)
+                ON CONFLICT(sender_id, key) DO UPDATE SET
+                    score            = score + 1,
+                    value            = excluded.value,
+                    confidence       = MAX(confidence, excluded.confidence),
+                    rejection_reason = excluded.rejection_reason,
+                    source_message   = excluded.source_message,
+                    last_seen        = CURRENT_TIMESTAMP
+            """, (sender_id, str(key)[:80], str(value)[:200],
+                  confidence, str(reason)[:80], source_message[:300]))
+        conn.commit()
+        conn.close()
+        log.debug(f"[CANDIDATES] {sender_id}: saved {len(rejected)} candidate(s)")
+    except Exception as e:
+        log.debug(f"[CANDIDATES] save error: {e}")
+
+
+# ======================================================================
 
 def detect_intent(message: str) -> str:
     """
@@ -1358,7 +1835,7 @@ def _call_groq(system: str, messages: list, max_tokens: int = 512) -> str:
     url = "https://api.groq.com/openai/v1/chat/completions"
     headers = {"Authorization": f"Bearer {GROQ_API_KEY}", "Content-Type": "application/json"}
     payload = {
-        "model": "qwen/qwen3-32b",
+        "model": "llama-3.3-70b-versatile",
         "messages": [
             {
                 "role": "system",
@@ -1366,7 +1843,7 @@ def _call_groq(system: str, messages: list, max_tokens: int = 512) -> str:
                     system
                     + "\n\nIMPORTANT:\n"
                     + "- user is male\n"
-                    + "- call user 'anh'\n"
+                    + "- call user 'anh', his name is Thắng\n"
                     + "- call yourself 'em'\n"
                     + "- NEVER call the user 'em'\n"
                     + "- NEVER swap genders\n"
@@ -1385,8 +1862,15 @@ def _call_groq(system: str, messages: list, max_tokens: int = 512) -> str:
         try:
             res = requests.post(url, json=payload, headers=headers, timeout=15)
             if res.status_code == 200:
-                raw = res.json()["choices"][0]["message"]["content"].strip()
-                return strip_thinking(raw)
+                    raw = res.json()["choices"][0]["message"]["content"]
+                
+                    log.info(f"[RAW_GROQ] {repr(raw)}")
+                
+                    cleaned = strip_thinking(raw)
+                
+                    log.info(f"[CLEAN_GROQ] {repr(cleaned)}")
+                
+                    return cleaned
             elif res.status_code == 429:
                 wait = 2 ** attempt   # 1s → 2s → 4s
                 log.warning(f"Groq rate limit (429), retry {attempt+1}/{max_retries} in {wait}s")
@@ -1543,6 +2027,19 @@ def admin():
         if facts:
             fact_str = " · ".join(f"{k}: {v} [{i}]" for k, v, i in facts)
             html += f'<div class="facts">📌 {fact_str}</div>'
+
+        # Level 5: Fact candidates (rejected — pending accumulation)
+        c.execute(
+            "SELECT key, value, score, rejection_reason FROM fact_candidates "
+            "WHERE sender_id=? ORDER BY score DESC LIMIT 10",
+            (sender_id,),
+        )
+        candidate_rows = c.fetchall()
+        if candidate_rows:
+            cand_str = " · ".join(
+                f"{k}: {v} (score={s}, reason={r})" for k, v, s, r in candidate_rows
+            )
+            html += f'<div class="facts" style="color:#ff8c69">🚫 SKEPTIC CANDIDATES: {cand_str}</div>'
 
         # Preferences
         c.execute("SELECT category, value, score FROM preferences WHERE sender_id=? ORDER BY score DESC LIMIT 10", (sender_id,))
