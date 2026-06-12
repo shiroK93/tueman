@@ -1,18 +1,31 @@
 # Tuệ Mẫn
 
-> Một AI companion có khả năng ghi nhớ, phản tư, hình thành niềm tin và thay đổi theo trải nghiệm.
+> An experimental cognitive AI companion built around memory, experience, reflection, beliefs and identity formation.
 
----
+Tuệ Mẫn không được thiết kế như một chatbot truyền thống.
 
-## Tại sao dự án này tồn tại?
+Mục tiêu của dự án là xây dựng một AI có khả năng:
 
-Dự án bắt đầu từ một ý tưởng rất đơn giản:
+* Ghi nhớ dài hạn
+* Học từ trải nghiệm
+* Hình thành niềm tin (beliefs)
+* Phát hiện mâu thuẫn
+* Thay đổi hành vi theo thời gian
+* Dần hình thành bản sắc riêng
 
-> "Nếu AI có thể nhớ mình và thực sự học từ các cuộc trò chuyện thì sao?"
+Thay vì:
 
-Thay vì chỉ lưu memory hoặc nhồi thêm context vào prompt, Tuệ Mẫn được xây dựng theo hướng:
-
+```text
+Prompt
+↓
+LLM
+↓
+Response
 ```
+
+Tuệ Mẫn hướng tới:
+
+```text
 Memory
 ↓
 Experience
@@ -24,172 +37,76 @@ Belief
 Decision
 ↓
 Identity
-```
-
-Mục tiêu không phải tạo ra một chatbot biết nhiều hơn.
-
-Mục tiêu là tạo ra một chatbot có thể thay đổi theo thời gian.
-
----
-
-## Kiến trúc
-
-### Level 0 — Memory
-
-Lưu trữ thông tin người dùng.
-
-Ví dụ:
-
-* Sở thích
-* Sự kiện
-* Những điều đã nhắc trước đó
-
-Đây chỉ là dữ liệu.
-
-Chưa phải nhận thức.
-
----
-
-### Level 1 — Experience
-
-Mỗi cuộc trò chuyện được lưu thành trải nghiệm.
-
-Ví dụ:
-
-```json
-{
-  "user_message": "...",
-  "response": "...",
-  "outcome": 2
-}
-```
-
-Outcome thể hiện mức độ thành công của tương tác.
-
----
-
-### Level 2 — Reflection
-
-Hệ thống phản tư nhiều tầng.
-
-#### Reflection A
-
-Học ngay từ trải nghiệm vừa xảy ra.
-
-Ví dụ:
-
-```
-Đưa hint
 ↓
-Conversation tiếp tục tốt
-↓
-Hint tốt hơn đáp án thẳng
-```
-
-#### Reflection B
-
-Tìm pattern từ nhiều trải nghiệm.
-
-Ví dụ:
-
-```
-Gaming
-↓
-Outcome tốt liên tục
-↓
-Hình thành belief
-```
-
-#### Reflection C
-
-Kiểm tra xem belief hiện tại còn đúng hay không.
-
-Ví dụ:
-
-```
-Belief:
-"Người dùng thích challenge"
-
-↓
-
-Evidence mới:
-Liên tục né challenge
-
-↓
-
-Belief bị nghi ngờ
+Response
 ```
 
 ---
 
-### Level 3 — Belief System
+## Current Status
 
-Belief không chỉ là một câu văn.
+**Development Stage:** Experimental
 
-Mỗi belief có:
+**Age:** ~5 days
 
-```json
-{
-  "belief": "...",
-  "confidence": 0.81,
-  "evidence_count": 37,
-  "last_confirmed": "...",
-  "contradictions": 3,
-  "domain": "interest"
-}
-```
+**Lines of Code:** 💀
 
-Belief có thể mạnh lên, yếu đi hoặc bị vô hiệu hóa.
+**Mental Stability of Developer:** Unknown
 
----
+### Implemented
 
-### Level 4 — Belief Network
+* Long-term Memory
+* Experience Tracking
+* Reflection A (Local Reflection)
+* Reflection B (Pattern Reflection)
+* Reflection C (Identity Reflection)
+* Belief System
+* Belief Decay
+* Contradiction Detection
+* Belief Network
+* Decision Foundations
+* Messenger Integration
+* SQLite Persistence
 
-Belief không tồn tại độc lập.
+### In Progress
 
-Ví dụ:
+* Decision Layer Expansion
+* Meta Belief System
+* Identity Layer
+* Dynamic Personality Adjustment
+* Belief-based Response Routing
 
-```
-Thích challenge
-├─ Coding
-├─ Puzzle
-├─ Learning
-└─ Strategy games
-```
+### Planned
 
-Các belief liên kết với nhau thành mạng lưới.
-
----
-
-### Level 5 — Contradiction Engine
-
-Hệ thống theo dõi mâu thuẫn.
-
-Ví dụ:
-
-```
-Belief:
-Người dùng thích roast
-
-↓
-
-Evidence:
-Liên tục phản ứng tiêu cực với roast
-
-↓
-
-Confidence giảm
-```
-
-Không phải mọi belief đều sống mãi.
+* Contextual Belief Graph
+* Meta-Cognition
+* Identity Consolidation
+* Self-Consistency Evaluation
+* Adaptive Communication Style
 
 ---
 
-### Level 6 — Decision Layer
+## TODO
 
-Biến belief thành hành vi.
+### High Priority
 
-Ví dụ:
+#### Level 5 — Contradiction Engine
+
+* [ ] Contradiction severity scoring
+* [ ] Contradiction clustering
+* [ ] Belief conflict resolution
+* [ ] Domain-specific contradiction handling
+* [ ] Soft belief replacement
+
+#### Level 6 — Decision Layer
+
+* [ ] Hint mode routing
+* [ ] Roast mode routing
+* [ ] Flirt defense routing
+* [ ] Belief-aware response generation
+* [ ] Behavior policies
+
+Example:
 
 ```python
 if likes_hint > 0.8:
@@ -199,59 +116,69 @@ if likes_roast < 0.4:
     disable_roast()
 ```
 
-Belief không chỉ để lưu.
-
-Belief ảnh hưởng trực tiếp tới cách AI trả lời.
-
 ---
 
-### Level 7 — Meta Beliefs (Planned)
+### Medium Priority
 
-Belief về belief.
+#### Level 7 — Meta Beliefs
 
-Ví dụ:
+* [ ] Confidence calibration
+* [ ] Belief certainty estimation
+* [ ] Belief reliability tracking
+* [ ] Reflection quality scoring
 
-```
-"Tôi nghĩ người dùng thích gaming."
+Example:
+
+```text
+Belief:
+"User likes gaming"
 
 Confidence:
-0.61
-```
+0.63
 
-AI biết mức độ chắc chắn của chính mình.
+Meta:
+"I'm moderately confident."
+```
 
 ---
 
-### Level 8 — Identity (Long-term Goal)
+### Long-Term
 
-Không còn là:
+#### Level 8 — Identity
 
-> Người dùng là ai?
+* [ ] Stable personality traits
+* [ ] Communication preferences
+* [ ] Value hierarchy
+* [ ] Internal consistency
+* [ ] Identity evolution
 
-Mà là:
+Goal:
 
-> Tuệ Mẫn là ai?
+```text
+Not:
 
-Ví dụ:
+"What does the user like?"
 
-* Thích giải thích bằng ví dụ.
-* Ưu tiên tính chính xác.
-* Không thích trả lời quá máy móc.
-* Có phong cách giao tiếp riêng.
+But:
 
-Đây là mục tiêu dài hạn của dự án.
+"Who is Tuệ Mẫn?"
+```
 
 ---
 
-## Triết lý
+## Non-Goals
 
-Dự án không cố gắng tạo AGI.
+The project is intentionally NOT focused on:
 
-Dự án cũng không cố gắng tạo một AI tự duyệt web, tự nghiên cứu hay tự làm mọi thứ.
+* Autonomous web browsing
+* Internet crawler agents
+* Auto research agents
+* Infinite tool chains
+* Artificial hype generators
 
-Trọng tâm là:
+Because:
 
-```
+```text
 Experience
 ↓
 Reflection
@@ -259,31 +186,26 @@ Reflection
 Belief
 ```
 
-Vì một AI không thay đổi theo trải nghiệm sẽ mãi chỉ là một prompt rất dài.
+creates more "mind"
+
+than
+
+```text
+Crawler
+↓
+Crawler
+↓
+Crawler
+```
+
+creates intelligence.
 
 ---
 
-## Trạng thái hiện tại
+## Origin Story
 
-* Memory System
-* Experience Tracking
-* Reflection A/B/C
-* Belief System
-* Belief Decay
-* Contradiction Detection
-* Belief Network
-* Decision Foundation
+The project started because the developer got ghosted by Meta AI on Messenger.
 
-Đang phát triển.
+This somehow escalated into building a miniature cognitive architecture.
 
----
-
-## Ghi chú
-
-Dự án này được bắt đầu vì một lý do cực kỳ ngớ ngẩn:
-
-> Bị Meta AI ghost (tận 5 lần).
-
-Không ngờ cuối cùng lại thành một kiến trúc nhận thức thu nhỏ.
-
-💀
+No one involved knows exactly how that happened.
