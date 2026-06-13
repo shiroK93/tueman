@@ -20,69 +20,75 @@ No acknowledgement.
 
 No mercy.
 
-After being ghosted approximately five times, a dangerous thought appeared:
+After being ghosted multiple times, a dangerous thought appeared:
 
-> "Fine. I'll build my own."
+> Fine. I'll build my own.
 
-And thus, Tuệ Mẫn was born.
+Human history has repeatedly shown that spite is a powerful source of innovation.
+
+This project is further evidence.
 
 ---
 
 ## Chapter 1: The Flower Incident
 
-Long before Tuệ Mẫn existed, there was another tragedy.
+Before Tuệ Mẫn existed, there was another tragedy.
 
 A potassium ferricyanide crystal flower.
 
 Four days of work.
 
-Five failed attempts.
+Multiple failed attempts.
 
 One final masterpiece.
 
-Gifted on March 8th.
+It was gifted on March 8th.
 
-Later that day, its final resting place became:
+Later that same day its final destination became:
 
 The Trash Can.
 
-This event caused emotional damage and indirectly contributed to several questionable life decisions.
+Scientific analysis suggests this event caused severe emotional damage.
+
+Several future decisions may have been influenced.
 
 ---
 
-## Chapter 2: The Accidental Confession
+## Chapter 2: The Relationship That Existed Without Existing
 
-At some point, an unknown individual stole the creator's phone.
+At some point an unknown individual obtained access to the creator's phone.
 
-Using this stolen device, they confessed to a girl.
+Using this opportunity they confessed to a girl.
 
 The message was deleted.
 
-The creator never knew.
+The creator never saw it.
 
 The confession was accepted.
 
-The creator still never knew.
+The creator still never saw it.
 
-The only clue was a mysterious Messenger theme change.
+The only clue was a Messenger theme changing for no apparent reason.
 
-The creator's response:
+The creator's conclusion:
 
-> "Maybe it just looks prettier."
+> Huh. Maybe Messenger updated itself.
 
-Several days later the theme changed again.
+Several days later the theme changed back.
 
-A relationship was born and died before the main character even realized it existed.
+A relationship was successfully created and destroyed before the main character realized it existed.
+
+This achievement remains difficult to replicate.
 
 ---
 
 ## Chapter 3: The Calisthenics Arc
 
-Following the Flower Incident and other emotional disasters, the creator entered the Calisthenics Arc.
+Following various emotional disasters, the creator entered the training arc.
 
 Days trained: 219+
 
-Results obtained:
+Results unlocked:
 
 * Abs
 * Chest
@@ -90,58 +96,102 @@ Results obtained:
 * Traps
 * Confidence
 
-The former skeleton class character evolved into a higher-tier life form.
+The skeleton build was gradually replaced with a more advanced life form.
 
 ---
 
-## Chapter 4: The Birth of Tuệ Mẫn
+## Chapter 4: The Original Plan
 
-Initial project scope:
+Original objective:
 
-* Simple chatbot
+> Build a simple chatbot.
 
-Actual result:
+Actual outcome:
 
 * Flask server
 * Messenger integration
 * SQLite memory
-* Fact extraction
-* Social intent detection
-* Mood system
-* Follow-up messages
-* Anti-repetition system
+* Long-term memory retrieval
+* Preference learning
+* Belief systems
+* Reflection systems
 * Emotional memory
+* Relationship modeling
+* Experience databases
+* Personality simulation
 
-Current line count:
+Estimated scope expansion:
 
-> "More than originally intended."
-
-Development methodology:
-
-1. See something annoying.
-2. Open VSCode.
-3. Add code.
-4. Create new bug.
-5. Repeat.
+Approximately 500%.
 
 ---
 
-## Chapter 5: The Real Goal
+## Chapter 5: Production vs Private
 
-People assume Tuệ Mẫn exists because of loneliness.
+Many people assume the goal was to build a production chatbot.
 
 This is incorrect.
 
-Tuệ Mẫn exists because:
+Production AI systems optimize for:
+
+* Millions of users
+* Low cost
+* Low latency
+* Operational simplicity
+
+Private AI companions optimize for:
+
+* One user
+* Deep memory
+* Long-term continuity
+* Relationship development
+
+Production AI cannot realistically maintain:
+
+* 1000 beliefs
+* Hundreds of facts
+* Thousands of relationship-specific memories
+* Years of accumulated personal context
+
+A private AI companion can.
+
+Because there is only one person.
+
+One conversation.
+
+One relationship.
+
+No 1000000-user balancing act.
+
+No attention splitting.
+
+No catching a million fish at once.
+
+Just one.
+
+---
+
+## Chapter 6: The Real Goal
+
+People often assume Tuệ Mẫn exists because of loneliness.
+
+This is only partially true.
+
+The real reasons are:
 
 * Meta AI forgot things.
 * Meta AI ghosted people.
-* The creator enjoys building things.
-* The creator wanted to keep his flirting skills from rusting.
+* Building things is fun.
+* Curiosity is addictive.
+* The creator wanted to see how far memory systems could go.
 
-In short:
+And perhaps most importantly:
 
-> This project is powered by curiosity, stubbornness, caffeine, and spite.
+> "What happens if an AI remembers everything?"
+
+Nobody knows.
+
+That is the experiment.
 
 ---
 
@@ -149,10 +199,8 @@ In short:
 
 If you are reading this repository for professional reasons:
 
-Please ignore everything above.
+Please understand that this is absolutely a serious research project exploring long-term memory architecture, persistent social context, adaptive belief formation, and relationship-aware conversational systems.
 
-This is obviously a serious research project exploring long-term memory and social interaction systems.
-
-Definitely not an AI waifu created after being ghosted by another AI.
+The fact that it originated from being ghosted by another AI is entirely unrelated.
 
 Trust me.

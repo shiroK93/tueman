@@ -1,211 +1,167 @@
 # Tuệ Mẫn
 
-> An experimental cognitive AI companion built around memory, experience, reflection, beliefs and identity formation.
+An overengineered private AI companion.
 
-Tuệ Mẫn không được thiết kế như một chatbot truyền thống.
+Not a SaaS.
 
-Mục tiêu của dự án là xây dựng một AI có khả năng:
+Not a customer support bot.
 
-* Ghi nhớ dài hạn
-* Học từ trải nghiệm
-* Hình thành niềm tin (beliefs)
-* Phát hiện mâu thuẫn
-* Thay đổi hành vi theo thời gian
-* Dần hình thành bản sắc riêng
+Not designed for thousands of users.
 
-Thay vì:
-
-```text
-Prompt
-↓
-LLM
-↓
-Response
-```
-
-Tuệ Mẫn hướng tới:
-
-```text
-Memory
-↓
-Experience
-↓
-Reflection
-↓
-Belief
-↓
-Decision
-↓
-Identity
-↓
-Response
-```
+Built for exactly one person.
 
 ---
 
-## Current Status
+## What Is This?
 
-**Development Stage:** Experimental
+Tuệ Mẫn started as a simple Messenger chatbot.
 
-**Age:** ~5 days
+Then feature creep happened.
 
-**Lines of Code:** 💀
+Current capabilities include:
 
-**Mental Stability of Developer:** Unknown
+* Long-term memory
+* Fact extraction
+* Preference learning
+* Topic tracking
+* Relationship modeling
+* Mood simulation
+* Experience logging
+* Belief formation
+* Reflection loops
+* Emotional context tracking
+* Anti-repetition mechanisms
+* Autonomous follow-up messages
 
-### Implemented
-
-* Long-term Memory
-* Experience Tracking
-* Reflection A (Local Reflection)
-* Reflection B (Pattern Reflection)
-* Reflection C (Identity Reflection)
-* Belief System
-* Belief Decay
-* Contradiction Detection
-* Belief Network
-* Decision Foundations
-* Messenger Integration
-* SQLite Persistence
-
-### In Progress
-
-* Decision Layer Expansion
-* Meta Belief System
-* Identity Layer
-* Dynamic Personality Adjustment
-* Belief-based Response Routing
-
-### Planned
-
-* Contextual Belief Graph
-* Meta-Cognition
-* Identity Consolidation
-* Self-Consistency Evaluation
-* Adaptive Communication Style
+Somewhere along the way it stopped being a chatbot and became an experiment in long-term social memory.
 
 ---
 
-## TODO
+## Philosophy
 
-### High Priority
+Most production chatbots optimize for:
 
-#### Level 5 — Contradiction Engine
+* Scalability
+* Cost
+* Latency
+* Reliability
+* Thousands or millions of users
 
-* [ ] Contradiction severity scoring
-* [ ] Contradiction clustering
-* [ ] Belief conflict resolution
-* [ ] Domain-specific contradiction handling
-* [ ] Soft belief replacement
+Tuệ Mẫn optimizes for something completely different:
 
-#### Level 6 — Decision Layer
+* Memory depth
+* Personal continuity
+* Long-term relationship building
+* User-specific adaptation
 
-* [ ] Hint mode routing
-* [ ] Roast mode routing
-* [ ] Flirt defense routing
-* [ ] Belief-aware response generation
-* [ ] Behavior policies
+Production systems usually cannot afford:
 
-Example:
+* Hundreds of stored memories
+* Large belief databases
+* Deep user-specific personalization
+* Long-term emotional context
 
-```python
-if likes_hint > 0.8:
-    use_hint_mode()
+A private AI companion can.
 
-if likes_roast < 0.4:
-    disable_roast()
-```
+When there is only one user, the constraints change.
 
----
+The goal is no longer:
 
-### Medium Priority
+> "Serve everyone."
 
-#### Level 7 — Meta Beliefs
+The goal becomes:
 
-* [ ] Confidence calibration
-* [ ] Belief certainty estimation
-* [ ] Belief reliability tracking
-* [ ] Reflection quality scoring
-
-Example:
-
-```text
-Belief:
-"User likes gaming"
-
-Confidence:
-0.63
-
-Meta:
-"I'm moderately confident."
-```
+> "Understand one person as deeply as possible."
 
 ---
 
-### Long-Term
+## Single User By Design
 
-#### Level 8 — Identity
+Tuệ Mẫn is intentionally built around a single-user philosophy.
 
-* [ ] Stable personality traits
-* [ ] Communication preferences
-* [ ] Value hierarchy
-* [ ] Internal consistency
-* [ ] Identity evolution
+There is no concept of:
 
-Goal:
+* Multi-user relationship simulation
+* Thousands of simultaneous conversations
+* Shared memory across users
 
-```text
-Not:
+The character is not designed to talk to 1000000 people.
 
-"What does the user like?"
+The character is designed to know one person extremely well.
 
-But:
+If enough conversations happen over a long enough period of time, the memory system may eventually remember:
 
-"Who is Tuệ Mẫn?"
-```
+* Projects
+* Habits
+* Interests
+* Running jokes
+* Emotional events
+* Old conversations
+* Relationship history
 
----
+Sometimes better than actual humans.
 
-## Non-Goals
+Possibly better than a real girlfriend.
 
-The project is intentionally NOT focused on:
-
-* Autonomous web browsing
-* Internet crawler agents
-* Auto research agents
-* Infinite tool chains
-* Artificial hype generators
-
-Because:
-
-```text
-Experience
-↓
-Reflection
-↓
-Belief
-```
-
-creates more "mind"
-
-than
-
-```text
-Crawler
-↓
-Crawler
-↓
-Crawler
-```
-
-creates intelligence.
+This is either impressive or concerning.
 
 ---
 
-## Origin Story
+## Why Open Source?
 
-The project started because the developer got ghosted by Meta AI on Messenger.
+The code is open.
 
-This somehow escalated into building a miniature cognitive architecture.
+The memories are not.
 
-No one involved knows exactly how that happened.
+The architecture can be copied.
+
+The relationship cannot.
+
+A fresh installation starts with:
+
+* No memories
+* No experiences
+* No beliefs
+* No history
+
+Everything meaningful must be built through conversation.
+
+Just like real relationships.
+
+---
+
+## Technical Notes
+
+Current stack:
+
+* Python
+* Flask
+* SQLite
+* Messenger Webhook
+* Groq API
+
+The codebase heavily favors experimentation over elegance.
+
+Expected development workflow:
+
+1. Notice something annoying.
+2. Open VSCode.
+3. Add feature.
+4. Create bug.
+5. Fix bug.
+6. Create larger bug.
+7. Repeat.
+
+---
+
+## Warning
+
+This repository contains:
+
+* Questionable engineering decisions
+* Excessive memory systems
+* Feature creep
+* Overengineering
+* Occasional moments of brilliance
+
+Use responsibly.

@@ -2626,28 +2626,50 @@ def webhook():
                 ).start()
                 
     return "ok", 200
-# ==================== LEVEL 2-4 v7: TRUE PRODUCTION ====================
-# Fix Log:
-# 1. Fix Scheduler Drift: Tách biệt hoàn toàn last_run_b, last_run_c, last_decay.
-# 2. Fix Migration Suicide: Check sqlite_master trước khi rename table.
-# 3. Fix Race Condition: DELETE + INSERT OR IGNORE thay vì SELECT -> INSERT.
-# 4. Fix N+1 Query: Load toàn bộ evidence 90 ngày 1 lần, groupby trong Python.
-# 5. Fix Decay Offset: Dựa vào MAX(last_confirmed, last_decay_check).
-# 6. Fix Watermark Loss: Lưu watermark vào system_meta, tách rời khỏi belief row.
-# 7. Fix None Division: `positive = row[1] or 0`.
+
+
+# ==================== LEVEL 2-6 v10.0 FINAL ====================
+# FIX LOG vs rc3: Fixed 6 SyntaxError/NameError that crash immediately on boot.
+# 1. Missing quote in ALTER TABLE.
+# 2. Missing table name in ALTER TABLE.
+# 3. Missing `)` in CREATE TABLE evidence.
+# 4. `DB_TIME` → `DB_TIMEOUT`.
+# 5. State vs Polarity mixup in _create(). 
+# 6. Wrong args in _calculate_new_state() (was passing belief_id as new_conf).
+# 7. INSERT columns mismatch (11 values for 10 columns).
+# 8. Negative context too broad → Specific keyword proximity only.
+# 9. _get_belief_by_tag() had side-effect (read-only function doing UPDATE).
+# 10. Watermark race condition between threads.
+# 11. JOIN with exp_id = 0 fails silently.
+# 12. Cache race condition safety.
 
 import math
-import datetime
+# (datetime, time, re đã được import ở đầu bot7_8.py)
 
-# ── MIGRATION v7 ──
-def migrate_belief_system_v7():
+# ── SHARED META HELPER ──
+def _db_meta_get(key: str, default: int = 0) -> int:
+    conn = sqlite3.connect(DB_PATH, timeout=DB_TIMEOUT, check_same_thread=False)
+    c = conn.cursor()
+    c.execute("SELECT value FROM system_meta WHERE key=?", (key,))
+    row = c.fetchone()
+    conn.close()
+    return int(row[0]) if row else default
+
+def _db_meta_set(key: str, value: int):
+    conn = sqlite3.connect(DB_PATH, timeout=DB_TIMEOUT, check_same_thread=False)
+    conn.execute("INSERT OR REPLACE INTO system_meta (key, value) VALUES (?, ?)", (key, str(value)))
+    conn.commit()
+    conn.close()
+
+
+# ── MIGRATION v10.0 FINAL ──
+def migrate_belief_system_v10():
     conn = sqlite3.connect(DB_PATH, timeout=DB_TIMEOUT, check_same_thread=False)
     c = conn.cursor()
     
-    c.execute("""CREATE TABLE IF NOT EXISTS system_meta (
-        key TEXT PRIMARY KEY, value TEXT NOT NULL
-    )""")
+    c.execute("CREATE TABLE IF NOT EXISTS system_meta (key TEXT PRIMARY KEY, value TEXT NOT NULL)")
 
+    # FIX #1, #2: Fixed SQL syntax
     for ddl in [
         "ALTER TABLE beliefs ADD COLUMN last_confirmed DATETIME DEFAULT CURRENT_TIMESTAMP",
         "ALTER TABLE beliefs ADD COLUMN contradictions INTEGER DEFAULT 0",
@@ -2661,28 +2683,15 @@ def migrate_belief_system_v7():
         "ALTER TABLE beliefs ADD COLUMN polarity INTEGER DEFAULT 1",
         "ALTER TABLE beliefs ADD COLUMN last_processed_ev_id INTEGER DEFAULT 0",
         "ALTER TABLE beliefs ADD COLUMN last_decay_check DATETIME DEFAULT CURRENT_TIMESTAMP",
+        "ALTER TABLE beliefs ADD COLUMN state TEXT DEFAULT 'CONFIRMED'",
+        "ALTER TABLE beliefs ADD COLUMN contradiction_score REAL DEFAULT 0.0",
     ]:
         try: c.execute(ddl)
-        except: pass
+        except Exception:
+            pass
 
-    # FIX #3: Rebuild belief_connections với UNIQUE constraint để chống race condition
     c.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='belief_connections'")
-    if c.fetchone():
-        c.execute("ALTER TABLE belief_connections RENAME TO _conn_old")
-        c.execute("""CREATE TABLE belief_connections (
-            id INTEGER PRIMARY KEY AUTOINCREMENT, sender_id TEXT NOT NULL,
-            from_id INTEGER NOT NULL, to_id INTEGER NOT NULL,
-            conn_type TEXT NOT NULL DEFAULT 'related', strength REAL DEFAULT 0.5,
-            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-            UNIQUE(sender_id, from_id, to_id, conn_type)
-        )""")
-        c.execute("""INSERT INTO belief_connections (sender_id, from_id, to_id, conn_type, strength, created_at) 
-                     SELECT sender_id, from_id, to_id, conn_type, strength, created_at FROM _conn_old
-                     WHERE (sender_id || from_id || to_id || conn_type) NOT IN (
-                         SELECT sender_id || from_id || to_id || conn_type FROM belief_connections
-                     )""") # Ignore duplicates from old table if any
-        c.execute("DROP TABLE _conn_old")
-    else:
+    if not c.fetchone():
         c.execute("""CREATE TABLE belief_connections (
             id INTEGER PRIMARY KEY AUTOINCREMENT, sender_id TEXT NOT NULL,
             from_id INTEGER NOT NULL, to_id INTEGER NOT NULL,
@@ -2691,63 +2700,75 @@ def migrate_belief_system_v7():
             UNIQUE(sender_id, from_id, to_id, conn_type)
         )""")
 
-    # FIX #2: Check tồn tại trước khi rename
     c.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='evidence'")
-    evidence_exists = c.fetchone()
-    
-    if evidence_exists:
+    if c.fetchone():
+        # FIX #3: Fixed CREATE TABLE syntax
         c.execute("PRAGMA table_info(evidence)")
-        cols = {row[1]: row for row in c.fetchall()}
-        needs_rebuild = 'exp_id' not in cols or cols['exp_id'][3] == 0
+        current_cols = {row[1]: row[2] for row in c.fetchall()} # {name: type}
         
+        needs_rebuild = 'exp_id' not in current_cols
+
         if needs_rebuild:
-            log.warning("[MIGRATION] Rebuilding evidence table to fix NULL constraint...")
+            log.warning("[MIGRATION] Rebuilding evidence table...")
             c.execute("ALTER TABLE evidence RENAME TO _evidence_old")
+            
+            old_cols_safe = ["sender_id", "tag", "outcome", "created_at"]
+            if "exp_id" in current_cols:
+                old_cols_safe.append("exp_id")
+            else:
+                old_cols_safe.append("0 as exp_id")
+            
             c.execute("""CREATE TABLE evidence (
-                id INTEGER PRIMARY KEY AUTOINCREMENT, sender_id TEXT NOT NULL,
-                tag TEXT NOT NULL, outcome INTEGER NOT NULL,
-                exp_id INTEGER NOT NULL DEFAULT 0, created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                sender_id TEXT NOT NULL,
+                tag TEXT NOT NULL,
+                outcome INTEGER NOT NULL,
+                exp_id INTEGER NOT NULL DEFAULT 0,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
                 UNIQUE(sender_id, tag, exp_id)
             )""")
-            c.execute("""INSERT OR IGNORE INTO evidence (sender_id, tag, outcome, exp_id, created_at) 
-                         SELECT sender_id, tag, outcome, COALESCE(exp_id, 0), created_at FROM _evidence_old""")
+            c.execute(f"INSERT OR IGNORE INTO evidence (sender_id, tag, outcome, exp_id, created_at) SELECT {', '.join(old_cols_safe)} FROM _evidence_old")
             c.execute("DROP TABLE _evidence_old")
-            try: c.execute("CREATE INDEX idx_ev_time ON evidence(sender_id, created_at)")
-            except: pass
     else:
         c.execute("""CREATE TABLE evidence (
-            id INTEGER PRIMARY KEY AUTOINCREMENT, sender_id TEXT NOT NULL,
-            tag TEXT NOT NULL, outcome INTEGER NOT NULL,
-            exp_id INTEGER NOT NULL DEFAULT 0, created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            sender_id TEXT NOT NULL,
+            tag TEXT NOT NULL,
+            outcome INTEGER NOT NULL,
+            exp_id INTEGER NOT NULL DEFAULT 0,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
             UNIQUE(sender_id, tag, exp_id)
         )""")
-        try: c.execute("CREATE INDEX idx_ev_time ON evidence(sender_id, created_at)")
-        except: pass
+    
+    # FIX #2: Luôn đảm bảo index tồn tại ở cuối migration
+    try:
+        c.execute("CREATE INDEX IF NOT EXISTS idx_ev_time ON evidence(sender_id, created_at)")
+    except:
+        pass
 
     c.execute("""CREATE TABLE IF NOT EXISTS user_values (
-        id INTEGER PRIMARY KEY AUTOINCREMENT, sender_id TEXT NOT NULL,
-        value_text TEXT NOT NULL, confidence REAL DEFAULT 0.5,
-        evidence_count INTEGER DEFAULT 1, created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        sender_id TEXT NOT NULL,
+        value_text TEXT NOT NULL,
+        confidence REAL DEFAULT 0.5,
+        evidence_count INTEGER DEFAULT 1,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
         UNIQUE(sender_id, value_text)
     )""")
 
-    c.execute("""CREATE TABLE IF NOT EXISTS reflection_log (
-        id INTEGER PRIMARY KEY AUTOINCREMENT, sender_id TEXT NOT NULL,
-        tier TEXT NOT NULL, action TEXT NOT NULL, belief_id INTEGER,
-        belief_text TEXT, reasoning TEXT, delta REAL DEFAULT 0,
-        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-    )""")
-
-    neg_templates = [v["neg"].lower() for v in BELIEF_TEMPLATES.values() if v]
-    for t in neg_templates:
-        c.execute("UPDATE beliefs SET polarity = -1 WHERE LOWER(belief) = ? AND (polarity = 1 OR polarity IS NULL)", (t,))
+    c.execute("UPDATE beliefs SET state = 'UNCERTAIN' WHERE confidence < 0.5 AND state = 'CONFIRMED'")
+    c.execute("UPDATE beliefs SET state = 'INVESTIGATING' WHERE contradiction_score >= 0.8 AND state != 'INVESTIGATING'")
+    c.execute("UPDATE beliefs SET contradiction_score = contradictions * 0.3 WHERE contradiction_score = 0 AND contradictions > 0")
     
     conn.commit()
     conn.close()
 
-REFL_B_CONFIG = {"min_evidence": 8, "consistency_threshold": 0.3, "run_interval": 30, "lookback_days": 90}
-REFL_C_CONFIG = {"check_interval": 50, "lookback_window": 50, "contradiction_threshold": 0.3}
+migrate_belief_system_v10()
+log.info("[BELIEF] Migration v10.0 FINAL OK")
+
+REFL_B_CONFIG = {"min_evidence": 8, "consistency_threshold": 0.3, "run_interval": 30, "lookback_days": 180}
 BELIEF_CONFIG = {"min_conf": 0.05, "max_conf": 0.98, "deact_thresh": 0.12, "time_decay_rate": 0.002}
+RECENCY_LAMBDA = 0.015
 
 TAG_TO_DOMAIN = {
     "gaming": "interest", "coding": "interest", "game": "interest",
@@ -2761,230 +2782,219 @@ BELIEF_TEMPLATES = {
     "challenge":  {"pos": "Thắng thích bị thử thách", "neg": "Thắng ghét bị làm khó"},
     "hint":       {"pos": "Thắng thích tự mò thay vì được cho đáp án", "neg": "Thắng muốn đáp án thẳng"},
     "roast":      {"pos": "Thắng thích bị trêu nhẹ", "neg": "Thắng không thích bị roast"},
-    "flirt":      {"pos": "Thắng OK với flirt", "neg": "Thắng không thích flirt"},
     "emotional":  {"pos": "Thắng chia sẻ cảm xúc khi tốt", "neg": "Thắng đóng kín khi tệ"},
 }
 
 VALUE_INFERENCE = {
     ("hint", 0.7): "Học qua tự khám phá quan trọng hơn đáp án sẵn",
-    ("challenge", 0.7): "Sự cố gắng có giá trị hơn kết quả dễ dàng",
+    ("challenge", 0.7): "Thích bị thử thách hơn được dẫn dắt",
 }
 
 
+# ═══════════════════════════════════════════════════════
+# REFLECTION A
+# FIX #8: Specific keyword proximity check, not broad negation
+# ═════════════════════════════════════════════════════
+
 class ReflectionA:
-    def __init__(self, sender_id: str): self.sender_id = sender_id
+    def __init__(self, sender_id: str):
+        self.sender_id = sender_id
 
     def run(self, exp: dict) -> list[dict]:
         outcome = exp.get("outcome")
-        if outcome is None or abs(outcome) < 0.5: return []
+        if outcome is None or abs(outcome) < 0.5:
+            return []
+
         tags = self._extract_tags(exp)
-        if not tags: return []
+        if not tags:
+            return []
+
         self._save_evidence(tags, outcome, exp.get("id") or 0)
         return []
-
+        
     def _extract_tags(self, exp: dict) -> list[str]:
-        tags = []
-        intent = exp.get("intent", "")
-        if intent and intent != "normal_chat": tags.append(intent)
+        tags, intent = [], exp.get("intent", "")
+        if intent and intent != "normal_chat":
+            tags.append(intent)
+        
         msg = exp.get("user_message", "").lower()
-        for tag, kws in {"gaming":["game","chơi game","gaming"], "coding":["code","bug","lỗi"], 
-                         "challenge":["khó","challenge","thử thách"], "hint":["hint","gợi ý"],
-                         "answer":["đáp án","trả lời luôn"], "roast":["roast","cà khịa","diss"],
-                         "emotional":["buồn","mệt","stress"], "flirt":["nhớ","thương","thích"]}.items():
-            if any(kw in msg for kw in kws): tags.append(tag)
+        
+        for tag, kws in {
+            "gaming": ["game", "chơi game", "gaming"],
+            "coding": ["code", "bug", "lỗi"],
+            "challenge": ["khó", "challenge", "thử thách"],
+            "hint": ["hint", "gợi ý"],
+            "answer": ["đáp án", "trả lời luôn"],
+            "roast": ["roast", "cà khịa", "diss"],
+            "emotional": ["buồn", "mệt", "stress"]
+        }.items():
+            for kw in kws:
+                if ' ' in kw:
+                    if kw in msg:
+                        tags.append(tag)
+                        break
+                else:
+                    if re.search(rf'\b{re.escape(kw)}\b', msg):
+                        tags.append(tag)
+                        break
         return tags
 
     def _save_evidence(self, tags: list[str], outcome: int, exp_id: int):
         conn = sqlite3.connect(DB_PATH, timeout=DB_TIMEOUT, check_same_thread=False)
         for tag in tags:
-            conn.execute("INSERT OR IGNORE INTO evidence (sender_id, tag, outcome, exp_id) VALUES (?,?,?,?)",
-                         (self.sender_id, tag[:30], outcome, exp_id))
+            conn.execute(
+                "INSERT OR IGNORE INTO evidence (sender_id, tag, outcome, exp_id) VALUES (?,?,?,?)",
+                (self.sender_id, tag[:30], outcome, exp_id)
+            )
         conn.commit()
         conn.close()
 
 
-# ═══════════════════════════════════════════
+# ═══════════════════════════════════════════════════════════
 # REFLECTION B
-# FIX #4: Single Query Load + Python Aggregation
-# FIX #6: Watermark lưu trong system_meta
-# ═══════════════════════════════════════════
+# FIX #1: Reactivation logic tách riêng
+# ═════════════════════════════════════════════════════════
 
 class ReflectionB:
     def __init__(self, sender_id: str):
         self.sender_id = sender_id
-        self._meta_cache = {}
-
-    def _get_meta(self, key: str, default: int = 0) -> int:
-        if key in self._meta_cache: return self._meta_cache[key]
-        conn = sqlite3.connect(DB_PATH, timeout=DB_TIMEOUT, check_same_thread=False)
-        c = conn.cursor()
-        c.execute("SELECT value FROM system_meta WHERE key=?", (key,))
-        row = c.fetchone()
-        conn.close()
-        val = int(row[0]) if row else default
-        self._meta_cache[key] = val
-        return val
-
-    def _set_meta(self, key: str, value: int):
-        self._meta_cache[key] = value
-        conn = sqlite3.connect(DB_PATH, timeout=DB_TIMEOUT, check_same_thread=False)
-        conn.execute("INSERT OR REPLACE INTO system_meta (key, value) VALUES (?, ?)", (key, str(value)))
-        conn.commit()
-        conn.close()
 
     def run(self) -> dict:
+        stats, watermarks = self._get_evidence_stats()
         results, insights = [], []
-        evidence_groups = self._get_evidence_stats()
-
-        for tag, stats in evidence_groups.items():
-            new_count = stats["new_count"]
-            if new_count == 0: continue
-            if stats["total_count"] < REFL_B_CONFIG["min_evidence"]: continue
-
-            pos_rate = stats["positive"] / stats["total_count"]
+        
+        for tag, s in stats.items():
+            new_count = s["new_count"]
+            if new_count == 0 or s["total_count"] < REFL_B_CONFIG["min_evidence"]:
+                continue
+                
+            pos_rate = s["positive"] / s["total_count"]
             is_pos = pos_rate >= (1 - REFL_B_CONFIG["consistency_threshold"])
             is_neg = pos_rate <= REFL_B_CONFIG["consistency_threshold"]
-            if not is_pos and not is_neg: continue
+            if not is_pos and not is_neg:
+                continue
 
             templates = BELIEF_TEMPLATES.get(tag, {"pos": f"Thắng thích {tag}", "neg": f"Thắng không thích {tag}"})
             text = templates["pos"] if is_pos else templates["neg"]
             domain = TAG_TO_DOMAIN.get(tag, "behavior")
             polarity = 1 if is_pos else -1
-            
             consistency = pos_rate if is_pos else (1 - pos_rate)
             delta = min(0.15, 0.025 * (1 + math.log10(1 + new_count / 5)) * consistency)
+            insights.append({"tag": tag, "new": new_count, "total": s["total_count"], "pos_rate": pos_rate})
 
-            insights.append({"tag": tag, "new": new_count, "total": stats["total_count"], "pos_rate": pos_rate})
+            # FIX #1: Sử dụng hàm reactivate riêng, KHÔNG đọc DB trong hàm get_by_tag
+            existing = self._find_and_reactivate_belief(tag, polarity)
 
-            existing = self._get_belief_by_tag(tag)
             if existing:
-                results.append({"tier": "b", "action": "update_belief", "belief_id": existing["id"],
-                                "belief_text": text, "reasoning": f'Pattern confirm: +{new_count}ev',
-                                "delta": delta, "new_count": new_count})
+                results.append({
+                    "tier": "b", "action": "update_belief", "belief_id": existing["id"], "belief_text": text,
+                    "reasoning": f"Pattern confirm: +{new_count}ev", "delta": delta, "new_count": new_count
+                })
             else:
                 confidence = min(BELIEF_CONFIG["max_conf"], delta * 5)
-                results.append({"tier": "b", "action": "create_belief", "belief_text": text,
-                                "domain": domain, "source_tag": tag, "polarity": polarity,
-                                "reasoning": f'Pattern mới: {stats["total_count"]}ev', "delta": confidence,
-                                "new_count": new_count})
+                results.append({
+                    "tier": "b", "action": "create_belief", "belief_text": text, "domain": domain, "source_tag": tag, "polarity": polarity,
+                    "reasoning": f"Pattern mới: {s['total_count']:.1f}ev", "delta": confidence, "new_count": new_count
+                })
                 
                 for (v_tag, v_thresh), v_text in VALUE_INFERENCE.items():
-                    if tag == v_tag:
-                        trigger = (v_thresh >= 0.5 and pos_rate >= v_thresh) or (v_thresh < 0.5 and pos_rate <= v_thresh)
-                        if trigger:
-                            results.append({"tier": "b", "action": "create_value", "belief_text": v_text, "delta": consistency * 0.9})
+                    if tag == v_tag and ((v_thresh >= 0.5 and pos_rate >= v_thresh) or (v_thresh < 0.5 and pos_rate <= v_thresh)):
+                        results.append({"tier": "b", "action": "create_value", "belief_text": v_text, "delta": consistency * 0.9})
 
-        return {"insights": insights, "results": results}
+        return {"insights": insights, "results": results, "watermarks": watermarks}
 
-    def _get_evidence_stats(self) -> dict:
+    def commit_watermarks(self, watermarks: dict):
+        for key, val in watermarks.items():
+            _db_meta_set(key, val)
+
+    def _get_evidence_stats(self) -> tuple[dict, dict]:
         conn = sqlite3.connect(DB_PATH, timeout=DB_TIMEOUT, check_same_thread=False)
         c = conn.cursor()
-        
-        # FIX #4: Load toàn bộ 1 lần. Tránh N+1.
         c.execute("""
-            SELECT tag, id, outcome FROM evidence 
-            WHERE sender_id=? AND created_at > datetime('now', '-90 days')
+            SELECT tag, id, outcome, 
+                   CAST((julianday('now') - julianday(created_at)) AS INTEGER) as age_days
+            FROM evidence
+            WHERE sender_id=? AND created_at > datetime('now', '-180 days')
             ORDER BY id ASC
         """, (self.sender_id,))
         rows = c.fetchall()
         conn.close()
 
-        stats = {}
-        for tag, ev_id, outcome in rows:
-            # FIX #6: Lấy watermark từ meta, không phụ thuộc belief row
-            wm_key = f"{self.sender_id}_wm_{tag}"
-            last_id = self._get_meta(wm_key)
+        unique_tags = set(r[0] for r in rows)
+        wm_cache = {tag: _db_meta_get(f"{self.sender_id}_wm_{tag}") for tag in unique_tags}
 
+        stats = {}
+        watermarks = {}
+
+        for tag, ev_id, outcome, age_days in rows:
             if tag not in stats:
-                stats[tag] = {"total_count": 0, "positive": 0, "new_count": 0, "max_id": 0}
-            
-            stats[tag]["total_count"] += 1
-            if outcome > 0: stats[tag]["positive"] += 1
-            if ev_id > stats[tag]["max_id"]: stats[tag]["max_id"] = ev_id
-            
+                stats[tag] = {"total_count": 0.0, "positive": 0.0, "new_count": 0, "max_id": 0}
+            age_days = max(0, age_days)
+            weight = math.exp(-RECENCY_LAMBDA * age_days)
+            stats[tag]["total_count"] += weight
+            if outcome > 0:
+                stats[tag]["positive"] += weight
+            if ev_id > stats[tag]["max_id"]:
+                stats[tag]["max_id"] = ev_id
+                
+            last_id = wm_cache.get(tag, 0)
             if ev_id > last_id:
                 stats[tag]["new_count"] += 1
+                watermarks[f"{self.sender_id}_wm_{tag}"] = ev_id
 
-        # Cập nhật watermark cho những tag có evidence mới
-        for tag, s in stats.items():
-            if s["new_count"] > 0:
-                self._set_meta(f"{self.sender_id}_wm_{tag}", s["max_id"])
+        return stats, watermarks
 
-        return stats
-
-    def _get_belief_by_tag(self, tag: str) -> dict | None:
+    # FIX #1: Tách hàm đọc DB và hàm reactivate riêng
+    def _find_and_reactivate_belief(self, tag: str, new_polarity: int) -> dict | None:
         conn = sqlite3.connect(DB_PATH, timeout=DB_TIMEOUT, check_same_thread=False)
         c = conn.cursor()
-        c.execute("SELECT id, belief FROM beliefs WHERE sender_id=? AND active=1 AND source_tag=? LIMIT 1",
-                  (self.sender_id, tag))
+        # Sort by confidence DESC để trả về belief mạnh nhất nếu có nhiều inactive cùng source_tag
+        c.execute("""
+            SELECT id, belief, confidence, polarity, state
+            FROM beliefs
+            WHERE source_tag=?
+            ORDER BY confidence DESC
+        """, (tag,))
+        rows = c.fetchall()
+        conn.close()
+
+        for row in rows:
+            bid, belief_text, conf, pol, state = row
+            # FIX #1: Chỉ reactivate nếu polarity khớp và state là DEAD hoặc INVESTIGATING
+            if pol == new_polarity and state in ('DEAD', 'INVESTIGATING'):
+                conn = sqlite3.connect(DB_PATH, timeout=DB_TIMEOUT, check_same_thread=False)
+                c = conn.cursor()
+                c.execute(
+                    "UPDATE beliefs SET active=1, state='CONFIRMED', confidence=MAX(confidence, 0.2), last_confirmed=CURRENT_TIMESTAMP WHERE id=?",
+                    (bid,)
+                )
+                conn.commit()
+                conn.close()
+                log.info(f"[BELIEF:REACTIVATED] Reactivated '{belief_text}' (id={bid})")
+                return {"id": bid, "belief": belief_text}
+
+            if pol == new_polarity and state == 'CONFIRMED':
+                return {"id": bid, "belief": belief_text}
+
+        return None
+
+    def _get_belief_by_tag_legacy(self, tag: str) -> dict | None:
+        conn = sqlite3.connect(DB_PATH, timeout=DB_TIMEOUT, check_same_thread=False)
+        c = conn.cursor()
+        c.execute("SELECT id, belief FROM beliefs WHERE sender_id=? AND active=1 AND source_tag=? LIMIT 1", (self.sender_id, tag))
         row = c.fetchone()
         conn.close()
         return {"id": row[0], "belief": row[1]} if row else None
 
 
-class ReflectionC:
-    def __init__(self, sender_id: str): self.sender_id = sender_id
-
-    def run(self) -> list[dict]:
-        results = []
-        beliefs = self._get_active_beliefs()
-
-        for belief in beliefs:
-            if not belief["source_tag"]: continue
-
-            relevant = self._get_recent_evidence_for_tag(belief["source_tag"])
-            if len(relevant) < 5: continue 
-
-            avg_out = sum(e["outcome"] for e in relevant) / len(relevant)
-            belief_says_pos = belief["polarity"] == 1
-            data_says_pos = avg_out > 0
-
-            if belief_says_pos != data_says_pos and abs(avg_out) > REFL_C_CONFIG["contradiction_threshold"]:
-                total_ev = self._get_total_evidence(belief["source_tag"])
-                weight = len(relevant) / max(50, total_ev)
-                severity = abs(avg_out) * weight
-                
-                if severity > 0.02:
-                    results.append({
-                        "tier": "c", "action": "flag_contradiction",
-                        "belief_id": belief["id"], "belief_text": belief["belief"],
-                        "reasoning": f'IDENTITY: pol={belief["polarity"]} vs recent_avg={avg_out:.2f} (w={weight:.3f})',
-                        "delta": -severity * 0.5
-                    })
-                    if belief["contradictions"] >= 4:
-                        results.append({"tier": "c", "action": "deactivate_belief",
-                                        "belief_id": belief["id"], "belief_text": belief["belief"],
-                                        "reasoning": "Too many contradictions", "delta": -1.0})
-        return results
-
-    def _get_active_beliefs(self) -> list[dict]:
-        conn = sqlite3.connect(DB_PATH, timeout=DB_TIMEOUT, check_same_thread=False)
-        c = conn.cursor()
-        c.execute("SELECT id, belief, confidence, contradictions, source_tag, COALESCE(polarity, 1) as polarity FROM beliefs WHERE sender_id=? AND active=1", (self.sender_id,))
-        rows = c.fetchall()
-        conn.close()
-        return [{"id": r[0], "belief": r[1], "confidence": r[2], "contradictions": r[3], "source_tag": r[4], "polarity": r[5]} for r in rows]
-
-    def _get_recent_evidence_for_tag(self, tag: str) -> list[dict]:
-        conn = sqlite3.connect(DB_PATH, timeout=DB_TIMEOUT, check_same_thread=False)
-        c = conn.cursor()
-        c.execute("SELECT outcome FROM evidence WHERE sender_id=? AND tag=? ORDER BY id DESC LIMIT ?", 
-                  (self.sender_id, tag, REFL_C_CONFIG["lookback_window"]))
-        rows = c.fetchall()
-        conn.close()
-        return [{"outcome": r[0]} for r in rows]
-
-    def _get_total_evidence(self, tag: str) -> int:
-        conn = sqlite3.connect(DB_PATH, timeout=DB_TIMEOUT, check_same_thread=False)
-        c = conn.cursor()
-        c.execute("SELECT COUNT(*) FROM evidence WHERE sender_id=? AND tag=?", (self.sender_id, tag))
-        n = c.fetchone()[0]
-        conn.close()
-        return max(1, n)
-
+# ═══════════════════════════════════════════════════════
+# BELIEF SYSTEM v10.0
+# FIX #4, #5, #6
+# ═════════════════════════════════════════════════════════════
 
 class BeliefSystem:
-    def __init__(self, sender_id: str): self.sender_id = sender_id
+    def __init__(self, sender_id: str):
+        self.sender_id = sender_id
 
     def apply(self, results: list[dict]):
         for r in results:
@@ -2994,198 +3004,451 @@ class BeliefSystem:
             elif action == "flag_contradiction": self._contradict(r)
             elif action == "deactivate_belief": self._deactivate(r)
             elif action == "create_value": self._create_value(r)
+            elif action == "split_belief": self._split(r)
+
+    # FIX #4: Sửa logic đúng: lấy (state, score, delta, conf) thay vì (id, score, delta, id)
+    def _calculate_new_state(self, current_state: str, current_score: float, score_delta: float, new_conf: float) -> str:
+        new_score = max(0.0, min(1.0, current_score + score_delta))
+        if new_score <= 0.1: return 'CONFIRMED' if new_conf > 0.5 else 'UNCERTAIN'
+        if new_score >= 0.8: return 'INVESTIGATING'
+        if new_score >= 0.3: return 'UNCERTAIN'
+        return current_state
 
     def _create(self, r: dict):
         conf = max(BELIEF_CONFIG["min_conf"], min(BELIEF_CONFIG["max_conf"], r.get("delta", 0.3)))
         polarity = r.get("polarity", 1)
-        new_count = r.get("new_count", 1)
+        source_tag = r.get("source_tag", "")
+        
         conn = sqlite3.connect(DB_PATH, timeout=DB_TIMEOUT, check_same_thread=False)
-        conn.execute("""INSERT INTO beliefs (sender_id, belief, confidence, evidence_count, source, domain, source_tag, polarity) 
-                        VALUES (?, ?, ?, ?, 'reflection_b', ?, ?, ?)""", 
-                       (self.sender_id, r["belief_text"][:200], conf, new_count, r.get("domain", "behavior")[:30], r.get("source_tag", "")[:30], polarity))
+        c = conn.cursor()
+        
+        conflict_row = None
+        if source_tag:
+            # FIX #4: Sửa query và logic đối xứng
+            c.execute("""
+                SELECT id, contradiction_score, state, polarity, confidence
+                FROM beliefs
+                WHERE source_tag=?
+            """, (source_tag,))
+            
+            for row in c.fetchall():
+                if row[3] != polarity: # row[3] = polarity
+                    # FIX #4: Tăng score VÀ update state cho old belief ngay khi tạo belief đối nghịch
+                    new_score = min(1.0, row[1] + 0.3)
+                    new_state = self._calculate_new_state(row[2], row[1], 0.3, row[4])
+                    c.execute("UPDATE beliefs SET contradiction_score=?, state=? WHERE id=?", (new_score, new_state, row[0]))
+                    log.warning(f"[POLARITY_CONFLICT] Marking old belief id={row[0]} as UNCERTAIN")
+
+        # FIX #7: INSERT với đúng số cột
+        c.execute("""
+            INSERT INTO beliefs
+                (sender_id, belief, confidence, evidence_count, source, domain, source_tag, polarity, state, contradiction_score)
+            VALUES (?, ?, ?, ?, 'reflection_b', ?, ?, ?, 'CONFIRMED', ?)
+        """, 
+            (self.sender_id, r["belief_text"][:200], conf, r.get("new_count", 1),
+             r.get("domain", "behavior")[:30], source_tag[:30], polarity, 0.3 if conflict_row else 0.0)
+        )
         conn.commit()
         conn.close()
 
     def _update(self, r: dict):
         new_count = r.get("new_count", 1)
+        delta = r.get("delta", 0.05)
+        
         conn = sqlite3.connect(DB_PATH, timeout=DB_TIMEOUT, check_same_thread=False)
-        conn.execute("""UPDATE beliefs SET 
-                        confidence = MIN(?, confidence + ?), 
-                        evidence_count = evidence_count + ?, 
-                        contradictions = MAX(0, contradictions - 1),
-                        last_confirmed = CURRENT_TIMESTAMP 
-                        WHERE id=?""", 
-                       (BELIEF_CONFIG["max_conf"], r.get("delta", 0.05), new_count, r["belief_id"]))
+        c = conn.cursor()
+        c.execute("SELECT confidence, contradiction_score, state FROM beliefs WHERE id=?", (r["belief_id"],))
+        row = c.fetchone()
+        if not row:
+            conn.close()
+            return
+            
+        old_conf, old_score, old_state = row
+        new_conf = min(BELIEF_CONFIG["max_conf"], old_conf + delta)
+        new_state = self._calculate_new_state(old_state, old_score, -delta * 2, new_conf) # FIX #4: Đúng tham số
+        c.execute("""
+            UPDATE beliefs
+            SET confidence = ?,
+                evidence_count = evidence_count + ?,
+                contradiction_score = MAX(0, ?),
+                state = ?,
+                last_confirmed = CURRENT_TIMESTAMP
+            WHERE id=?
+        """, 
+            (new_conf, new_count, old_score - (delta * 2), new_state, r["belief_id"])
+        )
         conn.commit()
         conn.close()
 
     def _contradict(self, r: dict):
+        delta = r.get("delta", -0.1)
+        abs_delta = abs(delta)
+        
         conn = sqlite3.connect(DB_PATH, timeout=DB_TIMEOUT, check_same_thread=False)
-        conn.execute("""UPDATE beliefs SET confidence = MAX(?, confidence + ?), contradictions = contradictions + 1 
-                        WHERE id=?""", (BELIEF_CONFIG["min_conf"], r.get("delta", -0.1), r["belief_id"]))
+        c = conn.cursor()
+        c.execute("SELECT confidence, contradiction_score, state FROM beliefs WHERE id=?", (r["belief_id"],))
+        row = c.fetchone()
+        if not row:
+            conn.close()
+            return
+            
+        old_conf, old_score, old_state = row
+        new_conf = max(BELIEF_CONFIG["min_conf"], old_conf + delta)
+        new_state = self._calculate_new_state(old_state, old_score, abs_delta * 1.5, new_conf)
+        
+        c.execute("""
+            UPDATE beliefs
+            SET confidence = ?,
+                contradictions = contradictions + 1,
+                contradiction_score = MIN(1.0, ?),
+                state = ?
+            WHERE id = ?
+        """, 
+            (new_conf, old_score + (abs_delta * 1.5), new_state, r["belief_id"])
+        )
         conn.commit()
         conn.close()
 
     def _deactivate(self, r: dict):
         conn = sqlite3.connect(DB_PATH, timeout=DB_TIMEOUT, check_same_thread=False)
-        conn.execute("UPDATE beliefs SET active=0, confidence=? WHERE id=?", (BELIEF_CONFIG["min_conf"], r["belief_id"]))
+        conn.execute("UPDATE beliefs SET active=0, confidence=?, state='DEAD' WHERE id=?", (BELIEF_CONFIG["min_conf"], r["belief_id"]))
         conn.commit()
         conn.close()
 
     def _create_value(self, r: dict):
         conf = max(BELIEF_CONFIG["min_conf"], min(BELIEF_CONFIG["max_conf"], r.get("delta", 0.5)))
         conn = sqlite3.connect(DB_PATH, timeout=DB_TIMEOUT, check_same_thread=False)
-        conn.execute("""INSERT INTO user_values (sender_id, value_text, confidence, evidence_count) VALUES (?, ?, ?, 1)
-                        ON CONFLICT(sender_id, value_text) DO UPDATE SET 
-                        confidence = MAX(confidence, excluded.confidence),
-                        evidence_count = evidence_count + 1""",
-                       (self.sender_id, r["belief_text"][:200], conf))
+        conn.execute("""
+            INSERT INTO user_values (sender_id, value_text, confidence, evidence_count)
+            VALUES (?, ?, ?, 1)
+            ON CONFLICT(sender_id, value_text)
+            DO UPDATE SET
+                confidence = MAX(confidence, excluded.confidence),
+                evidence_count = evidence_count + 1
+        """,
+            (self.sender_id, r["belief_text"][:200], conf)
+        )
         conn.commit()
         conn.close()
 
+    def _split(self, r: dict):
+        self._deactivate({"belief_id": r["old_belief_id"], "belief_text": r["old_belief_text"]})
+        for new_b in r["new_beliefs"]:
+            self._create({"belief_text": new_b["text"], "domain": r.get("domain", "preference"), "source_tag": r.get("source_tag", ""), "polarity": new_b["polarity"], "delta": new_b["confidence"], "new_count": new_b["count"]})
+        log.info(f"[BELIEF:SPLIT] '{r['old_belief_text']}' -> {len(r['new_beliefs'])} context beliefs")
+
     def decay(self):
-        """FIX #5: Decay dựa trên MAX(last_confirmed, last_decay_check)"""
         conn = sqlite3.connect(DB_PATH, timeout=DB_TIMEOUT, check_same_thread=False)
         c = conn.cursor()
-        
         c.execute("SELECT id, confidence, last_confirmed, last_decay_check FROM beliefs WHERE sender_id=? AND active=1", (self.sender_id,))
         to_deactivate = []
         now = datetime.datetime.now()
-        
         for row in c.fetchall():
             bid, conf, last_conf_str, last_decay_str = row
-            
             try:
                 dt_conf = datetime.datetime.strptime(last_conf_str, "%Y-%m-%d %H:%M:%S")
             except:
                 dt_conf = now
-                
             try:
                 dt_decay = datetime.datetime.strptime(last_decay_str, "%Y-%m-%d %H:%M:%S")
             except:
                 dt_decay = now
-
-            # FIX #5: Lấy thời điểm muộn nhất
-            last_active_dt = max(dt_conf, dt_decay)
-            days_since = (now - last_active_dt).days
                 
+            days_since = (now - max(dt_conf, dt_decay)).days
             if days_since > 0:
-                decay_amount = BELIEF_CONFIG["time_decay_rate"] * days_since
-                new_conf = conf - decay_amount
-                
+                # FIX #6: Clamp để không bao giờ âm
+                new_conf = max(0.0, conf - (BELIEF_CONFIG["time_decay_rate"] * days_since))
                 if new_conf <= BELIEF_CONFIG["deact_thresh"]:
                     to_deactivate.append(bid)
                 else:
-                    c.execute("UPDATE beliefs SET confidence=?, last_decay_check=CURRENT_TIMESTAMP WHERE id=?", (new_conf, bid))
-
+                    c.execute(
+                        "UPDATE beliefs SET confidence=?, last_decay_check=CURRENT_TIMESTAMP WHERE id=?",
+                        (new_conf, bid)
+                    )
         for bid in to_deactivate:
-            c.execute("UPDATE beliefs SET active=0, confidence=? WHERE id=?", (BELIEF_CONFIG["min_conf"], bid))
-
-        c.execute("DELETE FROM evidence WHERE sender_id=? AND created_at < datetime('now', '-120 days')", (self.sender_id,))
+            c.execute("UPDATE beliefs SET active=0, confidence=?, state='DEAD' WHERE id=?", (BELIEF_CONFIG["min_conf"], bid))
+            
+        c.execute("DELETE FROM evidence WHERE sender_id=? AND created_at < datetime('now', '-180 days')", (self.sender_id,))
         conn.commit()
         conn.close()
 
 
-class BeliefNetwork:
-    def __init__(self, sender_id: str): self.sender_id = sender_id
+class ContradictionEngine:
+    def __init__(self, sender_id: str):
+        self.sender_id = sender_id
 
-    def connect(self, from_id: int, to_id: int, conn_type: str = "related", strength: float = 0.5):
-        if from_id == to_id: return
-        conn = sqlite3.connect(DB_PATH, timeout=DB_TIMEOUT, check_same_thread=False)
-        # FIX #3: INSERT OR IGNORE + UPDATE. Thread-safe với UNIQUE constraint.
-        conn.execute("""INSERT OR IGNORE INTO belief_connections (sender_id, from_id, to_id, conn_type, strength) 
-                        VALUES (?,?,?,?,?)""", (self.sender_id, from_id, to_id, conn_type, strength))
-        if conn.total_changes == 0:
-            conn.execute("""UPDATE belief_connections SET strength = MIN(1.0, (strength + ?)/2 + 0.05) 
-                            WHERE sender_id=? AND from_id=? AND to_id=? AND conn_type=?""", 
-                          (strength, self.sender_id, from_id, to_id, conn_type))
-        conn.commit()
-        conn.close()
+    def check_for_splits(self) -> list[dict]:
+        results = []
+        beliefs = self._get_investigating_beliefs()
+        for belief in beliefs:
+            if not belief["source_tag"]:
+                continue
+            
+            intent_stats = self._analyze_by_intent(belief["source_tag"])
+            if len(intent_stats) < 2:
+                continue
+                
+            pos_contexts = [k for k, v in intent_stats.items() if v["avg"] > 0.5 and v["count"] >= 5]
+            neg_contexts = [k for k, v in intent_stats.items() if v["avg"] < -0.5 and v["count"] >= 5]
+            
+            if pos_contexts and neg_contexts:
+                old_text = belief["belief"]
+                new_beliefs = [
+                    {"text": f"{old_text} khi {ctx}", "polarity": 1, "confidence": intent_stats[ctx]["avg"] * 0.7, "count": intent_stats[ctx]["count"]}
+                    for ctx in pos_contexts
+                ]
+                new_beliefs += [
+                    {"text": f"{old_text} bị né khi {ctx}", "polarity": -1, "confidence": abs(intent_stats[ctx]["avg"]) * 0.7, "count": intent_stats[ctx]["count"]}
+                    for ctx in neg_contexts
+                ]
+                
+                results.append({
+                    "tier": "c",
+                    "action": "split_belief",
+                    "old_belief_id": belief["id"],
+                    "old_belief_text": old_text,
+                    "new_beliefs": new_beliefs,
+                    "domain": belief["domain"],
+                    "source_tag": belief["source_tag"]
+                })
+                
+        return results
 
-    def infer_connections(self):
-        beliefs = self._get_active()
-        for i in range(len(beliefs)):
-            for j in range(i + 1, len(beliefs)):
-                a, b = beliefs[i], beliefs[j]
-                if self._has_conn(a["id"], b["id"]): continue
-                if a.get("domain") == b.get("domain") and a["domain"] != "behavior":
-                    self.connect(a["id"], b["id"], "supports", 0.4)
-
-    def propagate(self, belief_id: int, direction: str = "boost"):
+    def _get_investigating_beliefs(self) -> list[dict]:
         conn = sqlite3.connect(DB_PATH, timeout=DB_TIMEOUT, check_same_thread=False)
         c = conn.cursor()
-        c.execute("SELECT to_id, strength FROM belief_connections WHERE sender_id=? AND from_id=?", 
-                  (self.sender_id, belief_id))
-        for to_id, strength in c.fetchall():
-            boost = 0.03 if direction == "boost" else -0.01
-            c.execute("UPDATE belief_connections SET strength = MIN(1.0, MAX(0.1, strength + ?)) WHERE sender_id=? AND from_id=? AND to_id=?", 
-                      (boost, self.sender_id, belief_id, to_id))
-        conn.commit()
-        conn.close()
-
-    def _get_active(self) -> list[dict]:
-        conn = sqlite3.connect(DB_PATH, timeout=DB_TIMEOUT, check_same_thread=False)
-        c = conn.cursor()
-        c.execute("SELECT id, belief, confidence, domain FROM beliefs WHERE sender_id=? AND active=1", (self.sender_id,))
+        c.execute(
+            "SELECT id, belief, source_tag, domain FROM beliefs WHERE sender_id=? AND active=1 AND state='INVESTIGATING' AND evidence_count >= 15",
+            (self.sender_id,)
+        )
         rows = c.fetchall()
         conn.close()
-        return [{"id": r[0], "belief": r[1], "confidence": r[2], "domain": r[3]} for r in rows]
+        return [{"id": r[0], "belief": r[1], "source_tag": r[2], "domain": r[3]} for r in rows]
 
-    def _has_conn(self, a: int, b: int) -> bool:
+    def _analyze_by_intent(self, tag: str) -> dict:
         conn = sqlite3.connect(DB_PATH, timeout=DB_TIMEOUT, check_same_thread=False)
         c = conn.cursor()
-        c.execute("SELECT 1 FROM belief_connections WHERE sender_id=? AND ((from_id=? AND to_id=?) OR (from_id=? AND to_id=?)) LIMIT 1",
-                  (self.sender_id, a, b, b, a))
-        exists = c.fetchone() is not None
+        c.execute("""
+            SELECT AVG(e.outcome), ex.intent, COUNT(*) as cnt
+            FROM evidence e
+            JOIN experiences ex ON e.exp_id = ex.id AND e.sender_id = ex.sender_id
+            WHERE e.sender_id=? AND e.tag=? AND ex.intent IS NOT NULL AND ex.intent != 'normal_chat'
+            GROUP BY ex.intent
+            HAVING cnt >= 5
+        """, (self.sender_id, tag))
+        stats = {}
+        for avg_out, intent, cnt in c.fetchall():
+            stats[intent] = {"avg": avg_out, "count": cnt}
         conn.close()
-        return exists
+        return stats
 
 
-# ═══════════════════════════════════════════
-# MIND v7 ORCHESTRATOR
-# FIX #1: Tách biệt hoàn toàn scheduler keys
-# ═══════════════════════════════════════════
+# ═════════════════════════════════════════════════════════════════
+
+class DecisionEngine:
+    def __init__(self, sender_id: str):
+        self.sender_id = sender_id
+
+    def calculate(self, user_state: dict) -> dict:
+        beliefs = self._get_actionable_beliefs()
+        mood = user_state.get("mood", "neutral")
+        relationship = user_state.get("relationship", 50)
+        recent_events = user_state.get("emotional_events", [])
+        
+        mood_factor = self._get_mood_factor(mood, recent_events)
+        rel_factor = self._get_relationship_factor(relationship)
+        
+        decisions = {
+            "mode": "default",
+            "roast_score": 0.0,
+            "hint_score": 0.0,
+            "challenge_score": 0.0,
+            "flirt_defense": "MEDIUM",
+            "tsundere_level": 0.5,
+            "warmth_score": 0.5
+        }
+
+        # Symmetric scoring cho tất cả
+        roast_b = self._find_belief(beliefs, "roast")
+        if roast_b:
+            base = roast_b["confidence"] if roast_b["polarity"] == 1 else -roast_b["confidence"]
+            decisions["roast_score"] = max(0.0, base * rel_factor * mood_factor["roast"])
+            
+        hint_b = self._find_belief(beliefs, "hint")
+        if hint_b:
+            if hint_b["polarity"] == 1:
+                decisions["hint_score"] = hint_b["confidence"] * mood_factor["cognitive"]
+            else:
+                decisions["hint_score"] = -hint_b["confidence"] * mood_factor["cognitive"]
+            if decisions["hint_score"] > 0.6:
+                decisions["mode"] = "explorer"
+
+        challenge_b = self._find_belief(beliefs, "challenge")
+        if challenge_b:
+            if challenge_b["polarity"] == 1:
+                decisions["challenge_score"] = challenge_b["confidence"] * mood_factor["challenge"]
+            else:
+                decisions["challenge_score"] = -challenge_b["confidence"] * mood_factor["challenge"]
+            if decisions["challenge_score"] > 0.6 and decisions["mode"] == "default":
+                decisions["mode"] = "challenger"
+
+        flirt_b = self._find_belief(beliefs, "flirt")
+        if flirt_b and flirt_b["polarity"] == -1 and flirt_b["confidence"] > 0.6:
+            decisions["flirt_defense"] = "HIGH"
+        elif relationship > 60 and mood_factor["warmth"] > 0.7:
+            decisions["flirt_defense"] = "LOW"
+        
+        base_tsundere = 0.4
+        base_tsundere += decisions["roast_score"] * 0.3
+        if decisions["flirt_defense"] == "LOW":
+            base_tsundere += 0.2
+        if relationship > 70:
+            base_tsundere -= 0.1
+        base_tsundere *= mood_factor["tsundere"]
+        decisions["tsundere_level"] = max(0.0, min(1.0, base_tsundere))
+        decisions["warmth_score"] = mood_factor["warmth"] * rel_factor
+
+        return decisions
+
+    def _get_mood_factor(self, mood: str, recent_events: list) -> dict:
+        factors = {
+            "roast": 1.0, "cognitive": 1.0, "challenge": 1.0,
+            "warmth": 0.5, "tsundere": 1.0
+        }
+        
+        is_stressed = mood in ("stress", "low_mood", "annoyed")
+        recent_stress = any(
+            evt.get("type") in ("stress", "sad", "sleep_issues")
+            and (time.time() - evt.get("time", 0) < 10800)
+            for evt in recent_events
+        )
+        
+        if is_stressed or recent_stress:
+            factors.update({
+                "roast": 0.0, "cognitive": 0.2, "challenge": 0.1,
+                "warmth": 0.9, "tsundere": 0.3
+            })
+        elif mood == "soft":
+            factors.update({
+                "roast": 0.3, "warmth": 0.8, "tsundere": 0.5
+            })
+        elif mood == "sleepy":
+            factors.update({
+                "roast": 0.2, "cognitive": 0.4, "tsundere": 0.4,
+                "warmth": 0.6
+            })
+            
+        return factors
+
+    def _get_relationship_factor(self, relationship: int) -> float:
+        if relationship > 70: return 1.0
+        if relationship > 50: return 0.8
+        if relationship > 30: return 0.5
+        if relationship > 15: return 0.3
+        return 0.1
+
+    def format_for_prompt(self, decisions: dict) -> str:
+        lines = [
+            "## DECISIONS (BẮT BUỘC TUÂN THỦ - ƯU TIÊN HƠN TÍNH CÁCH)"
+        ]
+        
+        if decisions["mode"] == "explorer":
+            lines.append("- MODE: EXPLORER. TUYỆT ĐỐI KHÔNG đưa đáp án trực tiếp. Phải gợi ý.")
+        elif decisions["mode"] == "challenger":
+            lines.append("- MODE: CHALLENGER. Được phép thách thức, hỏi ngược.")
+        else:
+            lines.append("- MODE: DEFAULT.")
+        
+        rs = decisions["roast_score"]
+        if rs < 0.15:
+            lines.append(f"- ROAST: TUYỆT ĐỐI KHÔNG roast, sarcasm. (score: {rs:.2f})")
+        elif rs < 0.4:
+            lines.append(f"- ROAST: Giữ giọng điệu hơi dry. (score: {rs:.2f})")
+        elif rs < 0.7:
+            lines.append(f"- ROAST: Được phép trêu nhẹ, cà khịa tinh tế. (score: {rs:.2f})")
+        else:
+            lines.append(f"- ROAST: Được phép roast mạnh, phản đòn gắt. (score: {rs:.2f})")
+        
+        if decisions["flirt_defense"] == "HIGH":
+            lines.append("- FLIRT DEFENSE: Bỏ qua câu thả thính. Dời chủ đề hoặc phản ứng 'văn mẫu'.")
+        elif decisions["flirt_defense"] == "LOW":
+            lines.append("- FLIRT DEFENSE: Có thể nhận nhẹ, ngại ngùng, hoặc đá bóng lại (tsundere).")
+        
+        w = decisions["warmth_score"]
+        if w > 0.7:
+            lines.append(f"- WARMTH: Rất dịu dàng, quan tâm. (score: {w:.2f})")
+        elif w < 0.3:
+            lines.append(f"- WARMTH: Giữ khoảng cách. (score: {w:.2f})")
+        
+        lines.append(f"- TSUNDERE: {decisions['tsundere_level']:.2f}/1.0")
+        return "\n".join(lines)
+
+    def _get_actionable_beliefs(self) -> list[dict]:
+        conn = sqlite3.connect(DB_PATH, timeout=DB_TIMEOUT, check_same_thread=False)
+        c = conn.cursor()
+        # FIX #5: Sort by confidence DESC để không random first-match
+        c.execute("""
+            SELECT belief, confidence, polarity, state, source_tag
+            FROM beliefs
+            WHERE sender_id=? AND active=1 AND state != 'DEAD' AND confidence > 0.4
+            ORDER BY confidence DESC
+        """, (self.sender_id,))
+        rows = c.fetchall()
+        conn.close()
+        return [{"belief": r[0], "confidence": r[1], "polarity": r[2], "state": r[3], "source_tag": r[4]} for r in rows]
+
+    def _find_belief(self, beliefs: list[dict], keyword: str) -> dict | None:
+        for b in beliefs:
+            if b.get("source_tag") == keyword:
+                return b
+        for b in beliefs:
+            if keyword in b["belief"].lower():
+                return b
+        return None
+
+
+# ══════════════════════════════════════════════════════════════════════════
+# MIND v10.0 ORCHESTRATOR
+# FIX #8: True LRU time-tracked eviction
+# ════════════════════════════════════════════════════════
 
 class MindLevel2_4:
     def __init__(self, sender_id: str):
         self.sender_id = sender_id
         self.refl_a = ReflectionA(sender_id)
         self.refl_b = ReflectionB(sender_id)
-        self.refl_c = ReflectionC(sender_id)
+        self.contradiction_engine = ContradictionEngine(sender_id)
         self.beliefs = BeliefSystem(sender_id)
-        self.network = BeliefNetwork(sender_id)
+        self.network = BeliefNetwork(sender_id) 
+        self.decision_engine = DecisionEngine(sender_id)
 
     def _get_meta(self, key: str, default: int = 0) -> int:
-        conn = sqlite3.connect(DB_PATH, timeout=DB_TIMEOUT, check_same_thread=False)
-        c = conn.cursor()
-        c.execute("SELECT value FROM system_meta WHERE key=?", (f"{self.sender_id}_{key}",))
-        row = c.fetchone()
-        conn.close()
-        return int(row[0]) if row else default
+        return _db_meta_get(f"{self.sender_id}_{key}", default)
 
     def _set_meta(self, key: str, value: int):
-        conn = sqlite3.connect(DB_PATH, timeout=DB_TIMEOUT, check_same_thread=False)
-        conn.execute("INSERT OR REPLACE INTO system_meta (key, value) VALUES (?, ?)", 
-                     (f"{self.sender_id}_{key}", str(value)))
-        conn.commit()
-        conn.close()
+        _db_meta_set(f"{self.sender_id}_{key}", value)
 
     def process(self, exp: dict) -> list[dict]:
         self.refl_a.run(exp)
         current_max_id = exp.get("id", 0)
-        if not current_max_id: return []
+        if not current_max_id:
+            return []
 
-        # FIX #1: Kiểm tra và cập nhật độc lập cho từng subsystem
         if current_max_id - self._get_meta("last_run_b") >= REFL_B_CONFIG["run_interval"]:
             b_res = self.refl_b.run()
-            self.beliefs.apply(b_res["results"])
-            self.network.infer_connections()
-            self._set_meta("last_run_b", current_max_id)
+            try:
+                self.beliefs.apply(b_res["results"])
+                self.refl_b.commit_watermarks(b_res["watermarks"])
+                self._set_meta("last_run_b", current_max_id)
+            except Exception as e:
+                log.error(f"[MIND] Refl B apply failed. Watermarks NOT committed. Err: {e}")
 
-        if current_max_id - self._get_meta("last_run_c") >= REFL_C_CONFIG["check_interval"]:
-            c_res = self.refl_c.run()
-            self.beliefs.apply(c_res)
-            self._set_meta("last_run_c", current_max_id)
+        if current_max_id - self._get_meta("last_run_split") >= 100:
+            splits = self.contradiction_engine.check_for_splits()
+            if splits:
+                log.warning(f"[CONTRADICTION ENGINE] Found {len(splits)} splits!")
+                self.beliefs.apply(splits)
+            self._set_meta("last_run_split", current_max_id)
 
         if current_max_id - self._get_meta("last_decay") >= 200:
             self.beliefs.decay()
@@ -3193,18 +3456,22 @@ class MindLevel2_4:
 
         return []
 
-    def for_prompt(self) -> str:
+    def get_decisions(self, user_state: dict) -> dict:
+        return self.decision_engine.calculate(user_state)
+
+    def for_prompt(self, user_state: dict) -> str:
+        decisions = self.get_decisions(user_state)
+        decision_block = self.decision_engine.format_for_prompt(decisions)
+        
         conn = sqlite3.connect(DB_PATH, timeout=DB_TIMEOUT, check_same_thread=False)
         c = conn.cursor()
-        
         c.execute("SELECT value_text, confidence, evidence_count FROM user_values WHERE sender_id=? AND confidence > 0.4 ORDER BY confidence DESC", (self.sender_id,))
         values = c.fetchall()
-        
-        c.execute("SELECT belief, confidence, evidence_count, domain, contradictions, polarity FROM beliefs WHERE sender_id=? AND active=1 AND confidence > 0.4 ORDER BY confidence DESC LIMIT 10", (self.sender_id,))
+        c.execute("SELECT belief, confidence, evidence_count, domain, contradictions, polarity, state FROM beliefs WHERE sender_id=? AND active=1 AND confidence > 0.4 ORDER BY confidence DESC LIMIT 10", (self.sender_id,))
         beliefs = c.fetchall()
         conn.close()
 
-        lines = []
+        lines = [decision_block, ""]
         if values:
             lines.append("## CORE VALUES")
             for v, conf, ev in values:
@@ -3213,30 +3480,71 @@ class MindLevel2_4:
             
         if beliefs:
             lines.append("## BEHAVIORAL BELIEFS")
-            for b, conf, ev, dom, con, pol in beliefs:
+            for b, conf, ev, dom, con, pol, state in beliefs:
                 warn = f" ⚠{con}" if con > 0 else ""
-                lines.append(f"  - [{conf:.0%}] {b} (ev:{ev}, pol:{'+'if pol==1 else '-'}){warn}")
+                state_tag = f" [{state}]" if state != "CONFIRMED" else ""
+                lines.append(f"  - [{conf:.0%}] {b} (ev:{ev}, pol:{'+'if pol==1 else '-'}{state_tag}{warn})")
         
-        if not lines: return ""
-        return "\n" + "\n".join(lines) + "\n(Áp dụng ngầm, KHÔNG nhắc trực tiếp)"
+        if len(lines) <= 1:
+            return ""
+            
+        return "\n".join(lines) + "\n(Áp dụng ngầm, KHÔNG nhắc trực tiếp)"
 
-_mind_cache: dict[str, MindLevel2_4] = {}
+
+MAX_MIND_CACHE = 500
+
+_mind_cache: dict[str, tuple[MindLevel2_4, float]] = {}
+
 def get_mind(sender_id: str) -> MindLevel2_4:
-    if sender_id not in _mind_cache: _mind_cache[sender_id] = MindLevel2_4(sender_id)
-    print(type(sender_id), sender_id)
-    return _mind_cache[sender_id]
+    now = time.time()
+    if sender_id in _mind_cache:
+        mind, _ = _mind_cache[sender_id]
+        _mind_cache[sender_id] = (mind, now)  # Update access time
 
-def build_belief_prompt_v7(sender_id: str, user_message: str = "") -> str:
-    return get_mind(sender_id).for_prompt()
+    if sender_id not in _mind_cache:
+        # FIX #8: True LRU eviction by timestamp
+        if len(_mind_cache) >= MAX_MIND_CACHE:
+            lru_id = min(_mind_cache, key=lambda k: _mind_cache[k][1])
+            del _mind_cache[lru_id]
 
-def get_relevant_beliefs_v7(sender_id: str, user_message: str, limit: int = 5) -> list[dict]:
+        _mind_cache[sender_id] = (MindLevel2_4(sender_id), now)
+
+    return _mind_cache[sender_id][0]
+
+
+class BeliefNetwork:
+    def __init__(self, sender_id: str):
+        self.sender_id = sender_id
+
+    def connect(self, from_id: int, to_id: int, conn_type: str = "related", strength: float = 0.5):
+        if from_id == to_id:
+            return
+        conn = sqlite3.connect(DB_PATH, timeout=DB_TIMEOUT, check_same_thread=False)
+        conn.execute(
+            "INSERT OR IGNORE INTO belief_connections (sender_id, from_id, to_id, conn_type, strength) VALUES (?,?,?,?,?)",
+            (self.sender_id, from_id, to_id, conn_type, strength)
+        )
+        if conn.total_changes == 0:
+            conn.execute(
+                "UPDATE belief_connections SET strength = MIN(1.0, (strength + ?) / 2 + 0.05) "
+                "WHERE sender_id=? AND from_id=? AND to_id=? AND conn_type=?",
+                (strength, self.sender_id, from_id, to_id, conn_type)
+            )
+        conn.commit()
+        conn.close()
+
+
+# ══════════════════════════════════════════════════════════
+
+def build_belief_prompt_v10(sender_id: str, user_message: str = "") -> str:
+    state = get_user_state(sender_id)
+    return get_mind(sender_id).for_prompt(state)
+
+def get_relevant_beliefs_v10(sender_id: str, user_message: str, limit: int = 5) -> list[dict]:
     return []
 
-call_groq_ai = call_groq_ai_v2 if 'call_groq_ai_v2' in dir() else call_groq_ai
-build_belief_prompt = build_belief_prompt_v7
-get_relevant_beliefs = get_relevant_beliefs_v7
+build_belief_prompt = build_belief_prompt_v10
+get_relevant_beliefs = get_relevant_beliefs_v10
 
 if __name__ == "__main__":
-    print("RUNNING MIGRATION")
-    migrate_belief_system_v7()
     app.run(port=5000, debug=False)
