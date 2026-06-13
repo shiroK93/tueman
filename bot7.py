@@ -1,5 +1,6 @@
 import os
 import re
+import sys
 import time
 import random
 import logging
@@ -2175,6 +2176,7 @@ def call_groq_ai(sender_id: str, user_message: str):
 
     # Level 2: Score previous response based on how user replied
     last_exp = get_last_unscored_experience(sender_id)
+    outcome = None
     if last_exp:
         outcome = detect_outcome_score(user_message)
         update_experience_outcome(last_exp["id"], outcome)
@@ -2190,10 +2192,23 @@ def call_groq_ai(sender_id: str, user_message: str):
     # Level 5: Pull relevant beliefs → behavioral guidance
     belief_block = build_belief_prompt(sender_id, user_message)
 
+    # Expansion module: Opinion/Identity system (BOM 17/18/19) — run one
+    # tradeoff/reflection step for this turn and surface the inner identity
+    # drift in the system prompt.
+    opinion_block = ""
+    try:
+        opinion_decisions = get_mind(sender_id).get_decisions(get_user_state(sender_id))
+        opinion_sys = get_opinion_system(sender_id)
+        opinion_sys.process_turn(opinion_decisions, last_outcome=outcome)
+        opinion_block = opinion_sys.for_prompt()
+    except Exception as e:
+        log.error(f"[OPINION] turn processing failed: {e}")
+
     system = (
         build_system_prompt(sender_id, user_message)
         + build_intent_prompt(intent)
         + belief_block
+        + opinion_block
     )
 
     save_message(sender_id, "user", user_message)
@@ -2644,6 +2659,8 @@ def webhook():
 # 12. Cache race condition safety.
 
 import math
+from dataclasses import dataclass, field
+from typing import Dict, List, Optional
 # (datetime, time, re đã được import ở đầu bot7_8.py)
 
 # ── SHARED META HELPER ──
@@ -2754,6 +2771,15 @@ def migrate_belief_system_v10():
         evidence_count INTEGER DEFAULT 1,
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
         UNIQUE(sender_id, value_text)
+    )""")
+
+    # ── OPINION/IDENTITY EXPANSION MODULE (ex opinion_system.py) ──
+    c.execute("""CREATE TABLE IF NOT EXISTS opinion_state (
+        sender_id      TEXT PRIMARY KEY,
+        identity_vector TEXT NOT NULL DEFAULT '{}',
+        values_state    TEXT NOT NULL DEFAULT '{}',
+        hypotheses       TEXT NOT NULL DEFAULT '[]',
+        updated_at      DATETIME DEFAULT CURRENT_TIMESTAMP
     )""")
 
     c.execute("UPDATE beliefs SET state = 'UNCERTAIN' WHERE confidence < 0.5 AND state = 'CONFIRMED'")
@@ -3546,5 +3572,448 @@ def get_relevant_beliefs_v10(sender_id: str, user_message: str, limit: int = 5) 
 build_belief_prompt = build_belief_prompt_v10
 get_relevant_beliefs = get_relevant_beliefs_v10
 
+
+# ══════════════════════════════════════════════════════════════════════════
+# EXPANSION MODULE: OPINION / IDENTITY SYSTEM (ex opinion_system.py)
+# Self-correcting cognitive architecture, ported in as a DLC module:
+#   - BOM 17: Cognitive Dissonance  (reality check stops runaway tradeoffs)
+#   - BOM 18: Identity Vector       (weighted archetype distribution)
+#   - BOM 19: True Reflection Loop  (Pattern -> Hypothesis -> Test -> Revision)
+#
+# State is persisted per-user in the `opinion_state` table (see
+# migrate_belief_system_v10) and cached via get_opinion_system(), the same
+# pattern used by get_mind(). Its output is appended to the AI system prompt
+# from inside call_groq_ai() via OpinionSystem.for_prompt().
+# ══════════════════════════════════════════════════════════════════════════
+
+@dataclass
+class OpinionConcept:
+    id: str
+    name: str
+
+OPINION_CONCEPTS = {
+    "independence": OpinionConcept("independence", "Independence"),
+    "social": OpinionConcept("social", "Social Connection"),
+    "growth": OpinionConcept("growth", "Growth"),
+}
+
+
+@dataclass
+class OpinionValue:
+    id: str
+    core_concept_id: str
+    tradeoff_wins: int = 0
+    tradeoff_losses: int = 0
+    accumulated_cost: float = 0.0
+
+    @property
+    def importance(self) -> float:
+        total = self.tradeoff_wins + self.tradeoff_losses
+        if total == 0: return 0.5
+        ratio = self.tradeoff_wins / total
+        stability = 1 - math.exp(-total / 20.0)
+        return max(0.0, min(1.0, 0.5 + (ratio - 0.5) * stability))
+
+    def heal_cost(self, amount: float):
+        self.accumulated_cost = max(0.0, self.accumulated_cost - amount)
+
+
+@dataclass
+class OpinionAction:
+    id: str
+    name: str
+    value_impacts: Dict[str, float] = field(default_factory=dict)
+
+
+class IdentityEngine:
+    """FIX BOM 18: Identity Vector — weighted archetype distribution
+    instead of a single discrete trait."""
+
+    def __init__(self):
+        # Mỗi archetype ảnh hưởng thế nào đến value (Weight matrix)
+        self.archetype_profiles = {
+            "explorer":   {"independence": 0.8, "growth": 0.7, "social": -0.5},
+            "builder":    {"social": 0.8, "growth": 0.6, "independence": -0.2},
+            "hermit":     {"independence": 1.0, "social": -1.0, "growth": 0.2}
+        }
+        self.vector: Dict[str, float] = {k: 1 / len(self.archetype_profiles) for k in self.archetype_profiles}
+
+    def update_from_tradeoff(self, winner_id: str, sacrificed_id: str):
+        """Cập nhật Identity Vector dựa trên mỗi lần tradeoff"""
+        delta = 0.05
+        for arch, profile in self.archetype_profiles.items():
+            score_change = profile.get(winner_id, 0) * delta + profile.get(sacrificed_id, 0) * (-delta * 0.5)
+            self.vector[arch] = max(0.0, self.vector[arch] + score_change)
+        self._normalize()
+
+    def apply_dissonance(self, trait_to_punish: str, penalty: float = 0.2):
+        """FIX BOM 17: Khi Reality Check thất bại, trừng phạt trực tiếp Identity"""
+        self.vector[trait_to_punish] = max(0.0, self.vector[trait_to_punish] - penalty)
+        self._normalize()
+
+    def get_tolerance_modifier(self, value_id: str) -> float:
+        """Tính toán modifier dựa trên weighted sum của Identity Vector"""
+        modifier = 0.0
+        for arch, weight in self.vector.items():
+            modifier += self.archetype_profiles[arch].get(value_id, 0.0) * weight
+        return modifier * 0.5  # Scale xuống cho hợp lý
+
+    def get_dominant_trait(self) -> str:
+        return max(self.vector, key=self.vector.get)
+
+    def _normalize(self):
+        total = sum(self.vector.values())
+        if total == 0: return
+        self.vector = {k: v / total for k, v in self.vector.items()}
+
+
+@dataclass
+class OpinionHypothesis:
+    trigger_pattern: str
+    assumption: str
+    test_action_id: str
+    status: str = "PENDING"  # PENDING -> TESTING -> CONFIRMED / REJECTED
+
+
+class OpinionReflectionEngine:
+    """FIX BOM 19: True Reflection (Pattern -> Hypothesis -> Test -> Revision)."""
+
+    def __init__(self):
+        self.active_hypotheses: List[OpinionHypothesis] = []
+
+    def scan_and_hypothesize(self, values: Dict[str, OpinionValue], identities: IdentityEngine) -> Optional[OpinionHypothesis]:
+        """Nhìn vào pattern và tạo giả thuyết (Không phải if-else đơn giản)"""
+        social_val = values.get("social")
+        if not social_val: return None
+
+        # Pattern: Social bị hy sinh quá nhiều, và Identity đang nghiêng về Explorer
+        if social_val.accumulated_cost > 1.2 and identities.vector["explorer"] > 0.5:
+            if not any(h.trigger_pattern == "social_exhaustion" for h in self.active_hypotheses):
+                hyp = OpinionHypothesis(
+                    trigger_pattern="social_exhaustion",
+                    assumption="Có thể tôi đang quá cô lập do lạm dụng Identity Explorer.",
+                    test_action_id="force_socialize"
+                )
+                self.active_hypotheses.append(hyp)
+                return hyp
+        return None
+
+    def process_test_result(self, action_id: str, outcome: float, values: Dict[str, OpinionValue], identities: IdentityEngine):
+        """Nhận kết quả của bài test và Revision lại Worldview"""
+        for hyp in self.active_hypotheses:
+            if hyp.test_action_id == action_id and hyp.status == "TESTING":
+                if outcome > 0.5:
+                    hyp.status = "CONFIRMED"
+                    values["social"].heal_cost(0.5)  # Revision: Heal social
+                    identities.apply_dissonance("explorer", 0.1)  # Revision: Hạ bệ Explorer một chút
+                    return f"GIẢ THUYẾT ĐÚNG: {hyp.assumption}. Điều chỉnh Identity."
+                else:
+                    hyp.status = "REJECTED"
+                    return f"GIẢ THUYẾT SAI: Kết quả tồi. Giữ nguyên lập trường."
+        return None
+
+
+class TradeoffEngine:
+    BASE_THRESHOLD = 1.5
+    ABSOLUTE_REALITY_LIMIT = 2.2  # FIX BOM 17: Ngưỡng tuyệt đối của thực tại, không ai vượt qua được
+
+    def evaluate(self, action: OpinionAction, values: Dict[str, OpinionValue], identities: IdentityEngine, forced: bool = False) -> dict:
+        supports = [(vid, imp) for vid, imp in action.value_impacts.items() if imp > 0.2 and vid in values]
+        harms = [(vid, imp) for vid, imp in action.value_impacts.items() if imp < -0.2 and vid in values]
+
+        if not supports or not harms:
+            return {"status": "NO_CONFLICT"}
+
+        winner_id = max(supports, key=lambda x: values[x[0]].importance)[0]
+        sacrificed_id = min(harms, key=lambda x: values[x[0]].importance)[0]
+
+        for vid, imp in supports:
+            values[vid].heal_cost(imp * 0.3)
+
+        # Tính ngưỡng dựa trên Identity Vector (BOM 18)
+        modifier = identities.get_tolerance_modifier(sacrificed_id)
+        dynamic_threshold = self.BASE_THRESHOLD + modifier
+
+        sacrified_val = values[sacrificed_id]
+        proposed_cost = abs(action.value_impacts[sacrificed_id])
+        new_total_cost = sacrified_val.accumulated_cost + proposed_cost
+
+        # FIX BOM 17: REALITY CHECK
+        if new_total_cost > self.ABSOLUTE_REALITY_LIMIT and not forced:
+            # Đụng tường thực tại. Phá vỡ Runaway Loop.
+            dominant = identities.get_dominant_trait()
+            identities.apply_dissonance(dominant, 0.3)  # Trừng phạt nặng Identity đang thống trị
+            return {
+                "status": "REALITY_SHOCK",
+                "reason": f"Đụng ngưỡng thực tại ({new_total_cost:.1f}/{self.ABSOLUTE_REALITY_LIMIT}). Identity '{dominant}' bị Cognitive Dissonance trừng phạt."
+            }
+
+        if new_total_cost > dynamic_threshold and not forced:
+            return {"status": "BLOCKED", "reason": f"Đã vượt ngưỡng chịu đựng ({dynamic_threshold:.2f})."}
+
+        # Chấp nhận
+        values[winner_id].tradeoff_wins += 1
+        values[sacrificed_id].tradeoff_losses += 1
+        values[sacrificed_id].accumulated_cost += proposed_cost
+        identities.update_from_tradeoff(winner_id, sacrificed_id)
+
+        return {"status": "ACCEPTED", "winner": winner_id, "sacrificed": sacrificed_id}
+
+
+class OpinionSystem:
+    """Per-user Identity/Values/Tradeoff engine.
+
+    Wraps IdentityEngine + a fixed set of OpinionValue (independence/social/
+    growth) + TradeoffEngine + OpinionReflectionEngine for one sender_id,
+    persists to the `opinion_state` table, and exposes for_prompt() so this
+    "inner personality drift" can be injected into the AI system prompt.
+    """
+
+    VALUE_IDS = ("independence", "social", "growth")
+
+    def __init__(self, sender_id: str):
+        self.sender_id = sender_id
+        self.identity = IdentityEngine()
+        self.values: Dict[str, OpinionValue] = {
+            vid: OpinionValue(f"ov_{vid}", vid) for vid in self.VALUE_IDS
+        }
+        self.tradeoff = TradeoffEngine()
+        self.reflection = OpinionReflectionEngine()
+        self._load()
+
+    # ---------- persistence ----------
+    def _load(self):
+        try:
+            conn = sqlite3.connect(DB_PATH, timeout=DB_TIMEOUT, check_same_thread=False)
+            c = conn.cursor()
+            c.execute(
+                "SELECT identity_vector, values_state, hypotheses FROM opinion_state WHERE sender_id=?",
+                (self.sender_id,)
+            )
+            row = c.fetchone()
+            conn.close()
+            if not row:
+                return
+
+            identity_vector_raw, values_state_raw, hypotheses_raw = row
+
+            if identity_vector_raw:
+                vec = json.loads(identity_vector_raw)
+                for arch in self.identity.vector:
+                    if arch in vec:
+                        self.identity.vector[arch] = float(vec[arch])
+                self.identity._normalize()
+
+            if values_state_raw:
+                vs = json.loads(values_state_raw)
+                for vid, data in vs.items():
+                    if vid in self.values:
+                        v = self.values[vid]
+                        v.tradeoff_wins = int(data.get("wins", 0))
+                        v.tradeoff_losses = int(data.get("losses", 0))
+                        v.accumulated_cost = float(data.get("cost", 0.0))
+
+            if hypotheses_raw:
+                hyps = json.loads(hypotheses_raw)
+                self.reflection.active_hypotheses = [
+                    OpinionHypothesis(
+                        trigger_pattern=h["trigger_pattern"],
+                        assumption=h["assumption"],
+                        test_action_id=h["test_action_id"],
+                        status=h.get("status", "PENDING"),
+                    )
+                    for h in hyps
+                ]
+        except Exception as e:
+            log.error(f"[OPINION] load failed for {self.sender_id}: {e}")
+
+    def save(self):
+        try:
+            identity_vector = json.dumps(self.identity.vector)
+            values_state = json.dumps({
+                vid: {
+                    "wins": v.tradeoff_wins,
+                    "losses": v.tradeoff_losses,
+                    "cost": v.accumulated_cost,
+                }
+                for vid, v in self.values.items()
+            })
+            hypotheses = json.dumps([
+                {
+                    "trigger_pattern": h.trigger_pattern,
+                    "assumption": h.assumption,
+                    "test_action_id": h.test_action_id,
+                    "status": h.status,
+                }
+                for h in self.reflection.active_hypotheses
+            ])
+            conn = sqlite3.connect(DB_PATH, timeout=DB_TIMEOUT, check_same_thread=False)
+            conn.execute("""
+                INSERT INTO opinion_state (sender_id, identity_vector, values_state, hypotheses, updated_at)
+                VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)
+                ON CONFLICT(sender_id) DO UPDATE SET
+                    identity_vector = excluded.identity_vector,
+                    values_state    = excluded.values_state,
+                    hypotheses      = excluded.hypotheses,
+                    updated_at      = CURRENT_TIMESTAMP
+            """, (self.sender_id, identity_vector, values_state, hypotheses))
+            conn.commit()
+            conn.close()
+        except Exception as e:
+            log.error(f"[OPINION] save failed for {self.sender_id}: {e}")
+
+    # ---------- per-turn processing ----------
+    def process_turn(self, decisions: dict, last_outcome: Optional[int] = None) -> dict:
+        """Run one BOM17/18/19 step for this turn.
+
+        decisions:   output of DecisionEngine.calculate() for this sender.
+        last_outcome: detect_outcome_score() (-2..+2) of the user's reply to
+                       the bot's previous message, or None if there isn't one
+                       yet (e.g. first message of the conversation).
+        """
+        log_lines = []
+
+        # 1. If a hypothesis is currently TESTING, score it using the
+        #    reaction to the bot's previous message.
+        if last_outcome is not None:
+            outcome_norm = max(0.0, min(1.0, (last_outcome + 2) / 4.0))
+            for hyp in self.reflection.active_hypotheses:
+                if hyp.status == "TESTING":
+                    revision = self.reflection.process_test_result(
+                        hyp.test_action_id, outcome_norm, self.values, self.identity
+                    )
+                    if revision:
+                        log_lines.append(revision)
+
+        # 2. Map this turn's decisions -> a tradeoff Action and evaluate it
+        action = self._action_from_decisions(decisions)
+        result = {"status": "SKIPPED"}
+        if action is not None:
+            result = self.tradeoff.evaluate(action, self.values, self.identity)
+            if result["status"] in ("REALITY_SHOCK", "BLOCKED"):
+                log_lines.append(f"[OPINION] {result['status']}: {result['reason']}")
+
+        # 3. Scan for a new hypothesis about the resulting pattern
+        hyp = self.reflection.scan_and_hypothesize(self.values, self.identity)
+        if hyp:
+            hyp.status = "TESTING"
+            log_lines.append(f"[OPINION] New hypothesis: {hyp.assumption}")
+
+        self.save()
+        if log_lines:
+            log.info(" | ".join(log_lines))
+        return {"tradeoff": result, "log": log_lines}
+
+    def _action_from_decisions(self, decisions: dict) -> Optional[OpinionAction]:
+        """Translate this turn's DecisionEngine output into a tradeoff Action.
+
+        This is a starter mapping — tune the value_impacts as the bot's real
+        behaviors evolve. Returns None when this turn doesn't represent a
+        meaningful tradeoff (no conflict to evaluate).
+        """
+        mode = decisions.get("mode", "default")
+        warmth = decisions.get("warmth_score", 0.5)
+
+        if mode == "explorer":
+            return OpinionAction("explore", "Đi sâu khám phá một mình",
+                                  {"independence": 0.8, "social": -0.5})
+        if mode == "challenger":
+            return OpinionAction("challenge", "Thử thách / đẩy đối phương",
+                                  {"growth": 0.6, "social": -0.4})
+        if warmth > 0.6:
+            return OpinionAction("connect", "Kết nối ấm áp",
+                                  {"social": 0.8, "independence": -0.3})
+        return None
+
+    # ---------- prompt injection ----------
+    def for_prompt(self) -> str:
+        dominant = self.identity.get_dominant_trait()
+        lines = ["## INNER IDENTITY (drift ngầm — KHÔNG nhắc trực tiếp)"]
+        lines.append(f"- Archetype chiếm ưu thế: {dominant} ({self.identity.vector[dominant]:.0%})")
+        for vid in self.VALUE_IDS:
+            v = self.values[vid]
+            name = OPINION_CONCEPTS[vid].name
+            tag = ""
+            if v.accumulated_cost > 1.2:
+                tag = " — đang quá tải, cần được 'chữa lành'"
+            lines.append(f"- {name}: importance {v.importance:.0%}, cost {v.accumulated_cost:.2f}{tag}")
+        lines.append("(Để xu hướng identity/values này ảnh hưởng ngầm tới tone & lựa chọn phản hồi, KHÔNG nhắc thẳng ra)")
+        return "\n\n" + "\n".join(lines)
+
+
+MAX_OPINION_CACHE = 500
+_opinion_cache: dict[str, tuple["OpinionSystem", float]] = {}
+
+def get_opinion_system(sender_id: str) -> "OpinionSystem":
+    now = time.time()
+    if sender_id in _opinion_cache:
+        sys_obj, _ = _opinion_cache[sender_id]
+        _opinion_cache[sender_id] = (sys_obj, now)  # bump LRU timestamp
+        return sys_obj
+
+    if len(_opinion_cache) >= MAX_OPINION_CACHE:
+        lru_id = min(_opinion_cache, key=lambda k: _opinion_cache[k][1])
+        del _opinion_cache[lru_id]
+
+    sys_obj = OpinionSystem(sender_id)
+    _opinion_cache[sender_id] = (sys_obj, now)
+    return sys_obj
+
+
+def demo_opinion_system():
+    """Standalone demo of the Opinion/Identity expansion module
+    (ported from opinion_system.py's original __main__ block).
+    Run with: python bot7.28.py --opinion-demo
+    """
+    values = {
+        "independence": OpinionValue("v1", "independence", tradeoff_wins=10),
+        "social": OpinionValue("v2", "social", tradeoff_losses=8, accumulated_cost=1.4)
+    }
+    identities = IdentityEngine()
+    identities.vector = {"explorer": 0.8, "builder": 0.1, "hermit": 0.1}  # Ban đầu rất cực đoan
+
+    tradeoff = TradeoffEngine()
+    reflection = OpinionReflectionEngine()
+
+    action_isolate = OpinionAction("isolate", "Isolate", {"independence": 0.8, "social": -0.5})
+
+    print("--- [1. RUNAWAY LOOP ĐANG CHẠY] ---")
+    print(f"Identity Vector Ban đầu: {identities.vector}")
+    print(f"Social Cost ban đầu: {values['social'].accumulated_cost}")
+
+    while True:
+        res = tradeoff.evaluate(action_isolate, values, identities)
+        if res["status"] == "ACCEPTED":
+            print(f"  -> Accept. Social Cost lên: {values['social'].accumulated_cost:.2f}")
+        else:
+            print(f"\n--- [2. FIX BOM 17: REALITY SHOCK!] ---")
+            print(f"Status: {res['status']}")
+            print(f"Reason: {res['reason']}")
+            break
+
+    print(f"\nIdentity Vector SAU SHOCK: {identities.vector}")
+    print("-> Loop bị phá! Explorer bị trừ điểm, hệ thống tự nhận ra mình đi quá xa.")
+
+    print("\n--- [3. FIX BOM 19: TRUE REFLECTION KICKS IN] ---")
+    hyp = reflection.scan_and_hypothesize(values, identities)
+    if hyp:
+        print(f"Phát hiện Pattern: Social exhaustion.")
+        print(f"Giả thuyết sinh ra: '{hyp.assumption}'")
+        print(f"-> Yêu cầu hành động test: '{hyp.test_action_id}'")
+        hyp.status = "TESTING"
+
+        print("\n--- [4. THỰC HIỆN BÀI TEST] ---")
+        test_res = tradeoff.evaluate(action_isolate, values, identities, forced=True)
+        print("Đã ép bản thân đi socialize... (Outcome giả lập: Tốt)")
+
+        revision_log = reflection.process_test_result("force_socialize", 0.9, values, identities)
+        print(f"\nKết quả Reflection: {revision_log}")
+        print(f"Social Cost sau khi heal: {values['social'].accumulated_cost:.2f}")
+        print(f"Identity Vector CUỐI CÙNG: {identities.vector}")
+
+
 if __name__ == "__main__":
-    app.run(port=5000, debug=False)
+    if "--opinion-demo" in sys.argv:
+        demo_opinion_system()
+    else:
+        app.run(port=5000, debug=False)
