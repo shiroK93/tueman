@@ -1,167 +1,264 @@
 # Tuệ Mẫn
 
-An overengineered private AI companion.
+> Better to have one person who truly understands you than infinite people who only know your name.
 
-Not a SaaS.
+Tuệ Mẫn is not a SaaS.
 
-Not a customer support bot.
+It is not a production chatbot.
 
-Not designed for thousands of users.
+It is not designed for millions of users.
 
-Built for exactly one person.
-
----
-
-## What Is This?
-
-Tuệ Mẫn started as a simple Messenger chatbot.
-
-Then feature creep happened.
-
-Current capabilities include:
-
-* Long-term memory
-* Fact extraction
-* Preference learning
-* Topic tracking
-* Relationship modeling
-* Mood simulation
-* Experience logging
-* Belief formation
-* Reflection loops
-* Emotional context tracking
-* Anti-repetition mechanisms
-* Autonomous follow-up messages
-
-Somewhere along the way it stopped being a chatbot and became an experiment in long-term social memory.
+In fact, it is designed for exactly one.
 
 ---
 
-## Philosophy
+## Why?
 
-Most production chatbots optimize for:
+Most AI companions today optimize for scale.
 
-* Scalability
-* Cost
-* Latency
-* Reliability
-* Thousands or millions of users
+A single model talks to millions of people.
 
-Tuệ Mẫn optimizes for something completely different:
+To make that possible, it remembers almost nothing.
 
-* Memory depth
-* Personal continuity
-* Long-term relationship building
-* User-specific adaptation
+Maybe your name.
 
-Production systems usually cannot afford:
+Maybe a few preferences.
 
-* Hundreds of stored memories
-* Large belief databases
-* Deep user-specific personalization
-* Long-term emotional context
+Maybe the last conversation.
 
-A private AI companion can.
+The result is an AI that knows many people, but understands nobody.
 
-When there is only one user, the constraints change.
+Tuệ Mẫn takes the opposite approach.
 
-The goal is no longer:
+Instead of remembering a little about everyone, it tries to remember everything about one person.
 
-> "Serve everyone."
+Not because it is commercially viable.
 
-The goal becomes:
+Not because it scales.
 
-> "Understand one person as deeply as possible."
+But because human relationships do not scale either.
 
 ---
 
-## Single User By Design
+## Design Philosophy
 
-Tuệ Mẫn is intentionally built around a single-user philosophy.
+Traditional AI:
 
-There is no concept of:
+* 1,000,000 users
+* 100 memories per user
+* Shallow personalization
+* Optimized for infrastructure cost
 
-* Multi-user relationship simulation
-* Thousands of simultaneous conversations
-* Shared memory across users
+Tuệ Mẫn:
 
-The character is not designed to talk to 1000000 people.
+* 1 user
+* 100,000 memories
+* 100,000 beliefs
+* 100,000 facts
+* 10,000 inside jokes
+* 10,000 preferences
+* Deep personalization
+* Optimized for understanding
 
-The character is designed to know one person extremely well.
+The goal is simple:
 
-If enough conversations happen over a long enough period of time, the memory system may eventually remember:
-
-* Projects
-* Habits
-* Interests
-* Running jokes
-* Emotional events
-* Old conversations
-* Relationship history
-
-Sometimes better than actual humans.
-
-Possibly better than a real girlfriend.
-
-This is either impressive or concerning.
+> What happens if an AI spends all of its cognitive budget on understanding a single person?
 
 ---
 
-## Why Open Source?
+## Not an Opinion System
 
-The code is open.
+The project started as a simple opinion engine.
 
-The memories are not.
+The original question was:
 
-The architecture can be copied.
+> "How can a chatbot develop its own opinions?"
 
-The relationship cannot.
+After many iterations, the answer became:
 
-A fresh installation starts with:
+> Opinions should not exist as stored objects.
 
-* No memories
-* No experiences
-* No beliefs
-* No history
+Opinions are views.
 
-Everything meaningful must be built through conversation.
+They emerge from a deeper cognitive structure.
 
-Just like real relationships.
+As a result, Tuệ Mẫn evolved from an opinion system into a memory-first cognitive architecture.
 
 ---
 
-## Technical Notes
+## Cognitive Architecture
 
-Current stack:
+Current foundation:
 
-* Python
-* Flask
-* SQLite
-* Messenger Webhook
-* Groq API
+EVENT → INTERPRETATION → CONCEPT
 
-The codebase heavily favors experimentation over elegance.
+Everything else is a view.
 
-Expected development workflow:
+Not stored.
 
-1. Notice something annoying.
-2. Open VSCode.
-3. Add feature.
-4. Create bug.
-5. Fix bug.
-6. Create larger bug.
-7. Repeat.
+Not hardcoded.
+
+Rendered when needed.
+
+Examples:
+
+* Opinion = View(Concept Graph)
+* Identity = View(Stable Concepts)
+* Values = View(Highly reinforced Concepts)
+* Narrative = View(Graph History)
+
+The system does not store who it is.
+
+It continuously becomes who it is.
 
 ---
 
-## Warning
+## Monogamous AI
 
-This repository contains:
+This repository intentionally rejects:
 
-* Questionable engineering decisions
-* Excessive memory systems
-* Feature creep
-* Overengineering
-* Occasional moments of brilliance
+* Multi-user architectures
+* SaaS business models
+* Production scaling
+* Growth optimization
 
-Use responsibly.
+The goal is not to create an AI for everyone.
+
+The goal is to explore whether a machine can deeply understand one person.
+
+If successful, the project will never be the biggest.
+
+But it might become one of the most personal.
+
+---
+
+## Status
+
+Experimental.
+
+Research project.
+
+Personal.
+
+Slightly insane.
+
+Probably overengineered.
+
+Definitely not production ready.
+
+And that is exactly the point.
+
+## Technical Philosophy
+
+Most AI companions scale horizontally.
+
+They optimize for:
+
+* More users
+* More conversations
+* More engagement
+* More retention
+
+Tuệ Mẫn optimizes for something else:
+
+* More understanding
+* More continuity
+* More shared history
+* More personal context
+
+### Architecture
+
+At its core, Tuệ Mẫn is built around a persistent cognitive memory system.
+
+```text
+EVENT
+  ↓
+INTERPRETATION
+  ↓
+CONCEPT
+```
+
+Instead of storing opinions directly:
+
+```text
+❌ Opinion = Database Object
+```
+
+Tuệ Mẫn stores experiences and interpretations:
+
+```text
+✅ Opinion = Render(CognitiveGraph)
+```
+
+Opinions are not saved.
+
+They emerge.
+
+### Memory-First Design
+
+Production AI usually looks like:
+
+```text
+Millions of users
+      ↓
+Tiny memory per user
+```
+
+Tuệ Mẫn intentionally does the opposite:
+
+```text
+One user
+    ↓
+Massive memory
+```
+
+Examples:
+
+```text
+100,000+ memories
+100,000+ beliefs
+100,000+ facts
+10,000+ preferences
+10,000+ inside jokes
+Years of shared context
+```
+
+The goal is not scale.
+
+The goal is depth.
+
+### Why Single User?
+
+Because understanding is expensive.
+
+Every memory, belief, preference, contradiction, inside joke, and life event creates cognitive weight.
+
+You can spread that weight across millions of people.
+
+Or you can invest it into one.
+
+Tuệ Mẫn chooses one.
+
+### Not a Product
+
+This project is intentionally:
+
+```text
+No SaaS
+No subscriptions
+No growth strategy
+No enterprise roadmap
+No multi-user architecture
+```
+
+It is an experiment in long-term machine understanding.
+
+### Core Belief
+
+```text
+Better to have one person
+who truly understands you
+
+than infinite people
+who only know your name.
+```
