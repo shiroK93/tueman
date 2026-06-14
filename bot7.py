@@ -62,7 +62,7 @@ LENS_ASYNC           = True
 
 
 # ╔═══════════════════════════════════════════════════════════════╗
-# ║  [MIND 7.35] INTERPRETATION ENGINE — CORE SCHEMA            ║
+# ║  [MIND 7.35] INTERPRETATION ENGINE — CORE SCHEMA              ║
 # ╚═══════════════════════════════════════════════════════════════╝
 
 class NodeType(Enum):
@@ -303,7 +303,7 @@ interpretation_engine: Optional[InterpretationEngine] = None
 
 
 # ╔═══════════════════════════════════════════════════════════════╗
-# ║  LLM PROVIDER ROUTER                                         ║
+# ║  LLM PROVIDER ROUTER                                          ║
 # ╚═══════════════════════════════════════════════════════════════╝
 
 class Provider:
@@ -425,7 +425,7 @@ def init_db():
 init_db()
 
 # ╔═══════════════════════════════════════════════════════════════╗
-# ║  [LEVEL 2-6 v10.0 FINAL] — THE BRAIN YOU SPENT A DAY ON    ║
+# ║  [LEVEL 2-6 v10.0 FINAL]                                      ║
 # ╚═══════════════════════════════════════════════════════════════╝
 
 def _db_meta_get(key: str, default: int = 0) -> int:
@@ -854,7 +854,7 @@ def build_belief_prompt_v10(sender_id: str, user_message: str = "") -> str:
 
 
 # ╔═══════════════════════════════════════════════════════════════╗
-# ║  [OPINION 7.29] REALITY FEEDBACK & PERSONALITY DRIFT        ║
+# ║  [OPINION 7.29] REALITY FEEDBACK & PERSONALITY DRIFT          ║
 # ╚═══════════════════════════════════════════════════════════════╝
 
 @dataclass
@@ -938,7 +938,7 @@ class ReflectionEngineV2:
 
 
 # ╔═══════════════════════════════════════════════════════════════╗
-# ║  KẾT THÚC MODULES — DƯỚI LÀ CHATBOT CORE & ROUTING         ║
+# ║  KẾT THÚC MODULES — DƯỚI LÀ CHATBOT CORE & ROUTING            ║
 # ╚═══════════════════════════════════════════════════════════════╝
 
 # (Các hàm get_history, save_message, get_facts, get_relevant_facts, save_facts, trim_facts_async, save_facts_with_importance, decay_old_facts_async, extract_topics_heuristic, background_learning_async, rule_filter_facts, skeptic_validate, save_candidate_facts được giữ nguyên logic như code gốc của mày để tối ưu space)
@@ -1355,17 +1355,9 @@ Có thể:
 - tease ngược
 - bắt bẻ
 
-Ví dụ:
-
-"văn mẫu ở đâu đấy"
-
-"nghe quen ghê"
-
-"anh nói câu đó với bao người rồi"
-
-Nhưng đôi khi nếu mood mềm:
-
-"anh nói vậy làm em khó rep ghê"
+Khi anh flex: đọc động cơ trước. 
+Phản ứng vào động cơ, không vào nội dung.
+Không bao giờ dùng lại cùng một cách hai lần.
 
 ----------------------------------
 
@@ -2001,7 +1993,127 @@ def call_groq_ai(sender_id: str, user_message: str):
     background_learning_async(sender_id, user_message)
     return ai_text
 
-# (Giữ nguyên toàn bộ phần FB Message, Routes, Admin, Webhook của mày)
+@app.route("/admin")
+def admin():
+    """Admin page — xem conversations gần đây. Truy cập: /admin?token=ADMIN_TOKEN"""
+    if request.args.get("token") != ADMIN_TOKEN:
+        return "Unauthorized", 401
+
+    conn = sqlite3.connect(DB_PATH, timeout=DB_TIMEOUT, check_same_thread=False)
+    c = conn.cursor()
+
+    # Danh sách users + tin nhắn cuối
+    c.execute("""
+        SELECT sender_id, MAX(ts) as last_ts, COUNT(*) as total
+        FROM history GROUP BY sender_id ORDER BY last_ts DESC
+    """)
+    users = c.fetchall()
+
+    html = """
+    <html><head><meta charset="utf-8">
+    <title>Bot Admin</title>
+    <style>
+        body{font-family:monospace;background:#111;color:#eee;padding:20px;max-width:900px;margin:0 auto}
+        h1{color:#e86c99}h2{color:#5ecfb0;border-bottom:1px solid #333;padding-bottom:6px}
+        .msg{margin:4px 0;padding:6px 10px;border-radius:6px}
+        .user{background:#1a2a1a;color:#7defa7}.bot{background:#1a1a2a;color:#aac4ff}
+        .ts{color:#555;font-size:11px;margin-left:8px}.facts{color:#f0a84a;font-size:12px}
+        a{color:#e86c99}hr{border-color:#333}
+    </style></head><body>
+    <h1>🎀 Tue Man Admin</h1>
+    """
+
+    for sender_id, last_ts, total in users:
+        html += f'<h2>👤 {sender_id} <span style="font-size:13px;color:#555">({total} msgs · last: {last_ts})</span></h2>'
+
+        # Facts with importance
+        c.execute("SELECT key, value, importance FROM facts WHERE sender_id=? ORDER BY importance DESC", (sender_id,))
+        facts = c.fetchall()
+        if facts:
+            fact_str = " · ".join(f"{k}: {v} [{i}]" for k, v, i in facts)
+            html += f'<div class="facts">📌 {fact_str}</div>'
+
+        # Level 5: Fact candidates (rejected — pending accumulation)
+        c.execute(
+            "SELECT key, value, score, rejection_reason FROM fact_candidates "
+            "WHERE sender_id=? ORDER BY score DESC LIMIT 10",
+            (sender_id,),
+        )
+        candidate_rows = c.fetchall()
+        if candidate_rows:
+            cand_str = " · ".join(
+                f"{k}: {v} (score={s}, reason={r})" for k, v, s, r in candidate_rows
+            )
+            html += f'<div class="facts" style="color:#ff8c69">🚫 SKEPTIC CANDIDATES: {cand_str}</div>'
+
+        # Preferences
+        c.execute("SELECT category, value, score FROM preferences WHERE sender_id=? ORDER BY score DESC LIMIT 10", (sender_id,))
+        pref_rows = c.fetchall()
+        if pref_rows:
+            pref_str = " · ".join(f"{cat}={val}({score:.0f})" for cat, val, score in pref_rows)
+            html += f'<div class="facts" style="color:#c8a4f0">💡 {pref_str}</div>'
+
+        # Top topics
+        c.execute("SELECT topic, count FROM topic_stats WHERE sender_id=? ORDER BY count DESC LIMIT 7", (sender_id,))
+        topic_rows = c.fetchall()
+        if topic_rows:
+            topic_str = " · ".join(f"{t}({n}x)" for t, n in topic_rows)
+            html += f'<div class="facts" style="color:#f0c080">📊 {topic_str}</div>'
+
+        # Style profile
+        c.execute("SELECT reply_length_pref, avg_msg_len, msg_count FROM style_profile WHERE sender_id=?", (sender_id,))
+        style_row = c.fetchone()
+        if style_row:
+            html += f'<div class="facts" style="color:#80d4f0">📏 length_pref={style_row[0]:.0f} avg_msg={style_row[1]:.0f} msgs={style_row[2]}</div>'
+
+        # Beliefs (Level 4)
+        c.execute("""
+            SELECT belief, confidence, evidence_count FROM beliefs
+            WHERE sender_id=? AND confidence > 0.15
+            ORDER BY confidence * evidence_count DESC LIMIT 10
+        """, (sender_id,))
+        belief_rows = c.fetchall()
+        if belief_rows:
+            html += '<div class="facts" style="color:#a8e6cf;font-weight:bold">🧠 BELIEFS</div>'
+            for belief, conf, ev in belief_rows:
+                bar = "█" * int(conf * 10) + "░" * (10 - int(conf * 10))
+                html += f'<div class="facts" style="color:#a8e6cf">{bar} {conf:.0%} ({ev}ev) — {belief}</div>'
+
+        # Experience stats (Level 1-2)
+        c.execute("SELECT COUNT(*), AVG(outcome) FROM experiences WHERE sender_id=? AND outcome IS NOT NULL", (sender_id,))
+        exp_row = c.fetchone()
+        if exp_row and exp_row[0]:
+            avg_o = exp_row[1] or 0
+            html += f'<div class="facts" style="color:#ffd3b6">🎯 {exp_row[0]} scored experiences | avg outcome: {avg_o:+.2f}</div>'
+
+        c.execute("""
+            SELECT intent, COUNT(*), ROUND(AVG(outcome),2) FROM experiences
+            WHERE sender_id=? AND outcome IS NOT NULL
+            GROUP BY intent ORDER BY COUNT(*) DESC LIMIT 5
+        """, (sender_id,))
+        intent_rows = c.fetchall()
+        if intent_rows:
+            intent_str = " · ".join(f"{i}({n}, avg{o:+.1f})" for i, n, o in intent_rows if i)
+            if intent_str:
+                html += f'<div class="facts" style="color:#ffd3b6">📈 {intent_str}</div>'
+
+
+        # Last 20 messages
+        c.execute("""
+            SELECT role, content, ts FROM history
+            WHERE sender_id=? ORDER BY id DESC LIMIT 20
+        """, (sender_id,))
+        msgs = list(reversed(c.fetchall()))
+        for role, content, ts in msgs:
+            css = "user" if role == "user" else "bot"
+            icon = "👤" if role == "user" else "🤖"
+            safe = content.replace("<","&lt;").replace(">","&gt;")
+            html += f'<div class="msg {css}">{icon} {safe}<span class="ts">{ts}</span></div>'
+        html += "<hr>"
+
+    conn.close()
+    html += "</body></html>"
+    return html
 
 @app.route("/", methods=["GET"])
 def verify():
