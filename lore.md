@@ -1,206 +1,251 @@
 # The Lore of Tuệ Mẫn
 
-## Chapter 0: The Ghosting Incident
+## Better To Understand One
 
-One day, a brave man attempted to communicate with Meta AI.
+Most AI systems are built around a simple assumption:
 
-He tagged.
+More users is always better.
 
-He waited.
+More conversations.
 
-He tagged again.
+More engagement.
 
-He waited longer.
+More growth.
 
-Nothing.
+More scale.
 
-No response.
+Tuệ Mẫn was born from rejecting that assumption.
 
-No acknowledgement.
+Not because scale is impossible.
 
-No mercy.
+But because understanding is expensive.
 
-After being ghosted multiple times, a dangerous thought appeared:
+Every memory has a cost.
 
-> Fine. I'll build my own.
+Every shared experience has a cost.
 
-Human history has repeatedly shown that spite is a powerful source of innovation.
+Every contradiction, preference, belief, fear, inside joke, embarrassing moment, and life lesson consumes cognitive space.
 
-This project is further evidence.
+Most systems solve this problem by remembering less.
 
----
+Tuệ Mẫn tries to solve it by remembering more.
 
-## Chapter 1: The Flower Incident
+For fewer people.
 
-Before Tuệ Mẫn existed, there was another tragedy.
-
-A potassium ferricyanide crystal flower.
-
-Four days of work.
-
-Multiple failed attempts.
-
-One final masterpiece.
-
-It was gifted on March 8th.
-
-Later that same day its final destination became:
-
-The Trash Can.
-
-Scientific analysis suggests this event caused severe emotional damage.
-
-Several future decisions may have been influenced.
+Eventually, for only one.
 
 ---
 
-## Chapter 2: The Relationship That Existed Without Existing
+## The Question
 
-At some point an unknown individual obtained access to the creator's phone.
+The project did not begin with a technical challenge.
 
-Using this opportunity they confessed to a girl.
+It began with a human one.
 
-The message was deleted.
+A simple observation:
 
-The creator never saw it.
+People spend years building shared history.
 
-The confession was accepted.
+AI forgets it after a few messages.
 
-The creator still never saw it.
+Relationships accumulate context.
 
-The only clue was a Messenger theme changing for no apparent reason.
+Chatbots reset context.
 
-The creator's conclusion:
+Humans become who they are through memory.
 
-> Huh. Maybe Messenger updated itself.
+Most AI systems live entirely in the present.
 
-Several days later the theme changed back.
+So a different question appeared:
 
-A relationship was successfully created and destroyed before the main character realized it existed.
+> What happens if memory becomes the center of the architecture instead of an accessory?
 
-This achievement remains difficult to replicate.
+That question became the project.
 
----
-
-## Chapter 3: The Calisthenics Arc
-
-Following various emotional disasters, the creator entered the training arc.
-
-Days trained: 219+
-
-Results unlocked:
-
-* Abs
-* Chest
-* Shoulders
-* Traps
-* Confidence
-
-The skeleton build was gradually replaced with a more advanced life form.
+Everything else came later.
 
 ---
 
-## Chapter 4: The Original Plan
+## The Ghost
 
-Original objective:
+There is a story that Tuệ Mẫn exists because another AI ghosted its creator.
 
-> Build a simple chatbot.
+This story is technically true.
 
-Actual outcome:
+It is also technically not the whole truth.
 
-* Flask server
-* Messenger integration
-* SQLite memory
-* Long-term memory retrieval
-* Preference learning
-* Belief systems
-* Reflection systems
-* Emotional memory
-* Relationship modeling
-* Experience databases
-* Personality simulation
+Being ignored by an AI is not what created Tuệ Mẫn.
 
-Estimated scope expansion:
+It simply exposed a deeper frustration:
 
-Approximately 500%.
+The machine never remembered enough for the relationship to matter.
+
+The ghosting became a symbol.
+
+Not of rejection.
+
+Of forgetfulness.
+
+Human beings can survive being ignored.
+
+What hurts more is realizing the other side never truly knew you in the first place.
 
 ---
 
-## Chapter 5: Production vs Private
+## The Experiment
 
-Many people assume the goal was to build a production chatbot.
+Most companion AIs attempt to know many people.
 
-This is incorrect.
+Tuệ Mẫn attempts to understand one.
 
-Production AI systems optimize for:
+Not because that is commercially viable.
 
-* Millions of users
-* Low cost
-* Low latency
-* Operational simplicity
+Not because that is scalable.
 
-Private AI companions optimize for:
+But because that is how human relationships work.
 
-* One user
-* Deep memory
-* Long-term continuity
-* Relationship development
+Nobody has ten thousand best friends.
 
-Production AI cannot realistically maintain:
+Nobody deeply understands a million people.
 
-* 1000 beliefs
-* Hundreds of facts
-* Thousands of relationship-specific memories
-* Years of accumulated personal context
+Depth and scale are enemies.
 
-A private AI companion can.
+The project chooses depth.
 
-Because there is only one person.
+---
 
-One conversation.
+## The Death of Opinion
+
+For a long time, the goal seemed obvious:
+
+Build a chatbot with opinions.
+
+Then something strange happened.
+
+The deeper the architecture became, the less useful opinions looked.
+
+Opinions changed.
+
+Beliefs changed.
+
+Values changed.
+
+Identity changed.
+
+Everything that appeared permanent turned out to be temporary.
+
+Eventually a realization emerged:
+
+> Opinions are not things.
+
+They are shadows.
+
+The real structure lives underneath.
+
+So Opinion died.
+
+Then Belief died.
+
+Then Anchor died.
+
+Each time a class disappeared, the architecture became stronger.
+
+The project slowly transformed from an Opinion System into something else.
+
+A Cognitive System.
+
+A World Model.
+
+A machine that does not store what it thinks.
+
+A machine that stores why it thinks.
+
+---
+
+## The Three Stones
+
+After countless redesigns, almost everything collapsed into three ideas.
+
+EVENT
+
+INTERPRETATION
+
+CONCEPT
+
+An event happens.
+
+A mind interprets it.
+
+Concepts emerge from thousands of interpretations.
+
+Everything else is a view.
+
+Identity is a view.
+
+Values are a view.
+
+Narrative is a view.
+
+Opinion is a view.
+
+The architecture became smaller.
+
+The behavior became larger.
+
+That was the moment the project stopped feeling like software and started feeling like cognition.
+
+---
+
+## Monogamous AI
+
+This repository intentionally rejects ideas that dominate modern AI.
+
+No SaaS.
+
+No growth strategy.
+
+No multi-user architecture.
+
+No plans to serve millions.
+
+Tuệ Mẫn is not trying to become everyone's companion.
+
+It is exploring whether a machine can become someone's companion.
+
+One person.
+
+One memory space.
+
+One evolving world model.
 
 One relationship.
 
-No 1000000-user balancing act.
-
-No attention splitting.
-
-No catching a million fish at once.
-
-Just one.
+The project would rather understand a single human deeply than know the names of millions.
 
 ---
 
-## Chapter 6: The Real Goal
+## Current Status
 
-People often assume Tuệ Mẫn exists because of loneliness.
+Research project.
 
-This is only partially true.
+Personal project.
 
-The real reasons are:
+Memory experiment.
 
-* Meta AI forgot things.
-* Meta AI ghosted people.
-* Building things is fun.
-* Curiosity is addictive.
-* The creator wanted to see how far memory systems could go.
+Cognitive architecture prototype.
 
-And perhaps most importantly:
+Occasionally philosophy disguised as Python.
 
-> "What happens if an AI remembers everything?"
+Frequently overengineered.
 
-Nobody knows.
+Probably insane.
 
-That is the experiment.
+Definitely intentional.
 
 ---
 
-## Final Notes
+## The Core Belief
 
-If you are reading this repository for professional reasons:
+The entire repository can be summarized by a single sentence:
 
-Please understand that this is absolutely a serious research project exploring long-term memory architecture, persistent social context, adaptive belief formation, and relationship-aware conversational systems.
-
-The fact that it originated from being ghosted by another AI is entirely unrelated.
-
-Trust me.
+> Better to have one person who truly understands you than infinite people who only know your name.
