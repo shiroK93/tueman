@@ -284,7 +284,7 @@ _graph_lock = threading.Lock()
 
 def _seed_initial_concepts(graph: CognitiveGraph):
     concepts = [
-        ("c_self_doubt", "Self_Doubt", ["dở", "kém", "giỏi", "đủ tốt", "mình", "thất bại", "sai", "lỗi"]),
+        ("c_self_doubt", "Self_Doubt", ["dở", "kém", "đủ tốt", "thất bại", "sai", "lỗi"]),
         ("c_growth", "Growth", ["tiến bộ", "cơ hội", "học hỏi", "sửa sai", "phát triển"]),
         ("c_resilience", "Resilience", ["đứng lên", "kiên trì", "không bỏ cuộc", "vượt qua"]),
         ("c_anxiety", "Anxiety", ["lo lắng", "áp lực", "sợ", "nervous", "hoang mang"]),
