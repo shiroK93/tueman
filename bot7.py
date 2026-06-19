@@ -1,11 +1,65 @@
 """
-TUỆ MẪN 7.56 — THE COGNITIVE SPINE (COMPLETE)
-"Evidence flows UP. Preference flows DOWN. Nothing flows back up."
+╔═══════════════════════════════════════════════════════════════╗
+║                     TUỆ MẪN 7.56.8                            ║
+║               THE COGNITIVE SPINE (LOCKED)                    ║
+╚═══════════════════════════════════════════════════════════════╝
 
-⚠️  WARNING: 7.56 is an integration layer. It connects 3 existing organs
-    (Perception, Worldview, Self-Model) via strict unidirectional contracts.
-    This is 7.56 with all missing runtime functions backported from 7.47.3.
+"Evidence flows upward.
+Preference flows downward.
+Meaning emerges elsewhere."
+
+7.56 is not a feature.
+
+7.56 is the boundary layer that prevents cognition from collapsing
+into self-reinforcing narrative loops.
+
+It enforces a strict separation between:
+
+```
+Observation  →  Perception  →  Worldview
+                               ↓
+                          Self-Model
+                               ↓
+                             Voice
+```
+
+No layer may rewrite the layer beneath it.
+No hypothesis may become evidence.
+No belief may alter observation.
+
+Worldview may speculate.
+Voice may speak.
+Only evidence may move upward.
+
+───────────────────────────────────────────────────────────────
+CURRENT STATUS
+───────────────────────────────────────────────────────────────
+
+✓ Orthogonal Prediction System
+✓ Hypothesis Market
+✓ Statistical Beliefs
+✓ Prediction Audit Framework
+✓ Calibration Tracking
+✓ Feature Registry
+✓ Meaning Firewall
+
+This module exists to answer one question:
+
+```
+"What does the system think is happening?"
+```
+
+without allowing that answer to become reality.
+
+If this layer fails,
+the architecture stops learning
+and starts hallucinating.
+
+Version: 7.56.8
+Status: ACTIVE
+Contract: LOCKED
 """
+
 import os
 import re
 import time
@@ -614,6 +668,8 @@ class Features:
     contains_job_reference: bool = False
     contains_state_change: bool = False
     contains_deflection: bool = False
+    contains_high_risk: bool = False       # ⚡ THÊM DÒNG NÀY
+    contains_sad_emoji: bool = False       # ⚡ THÊM DÒNG NÀY
     message_length_bucket: str = "short"
     response_latency_bucket: str = "normal"
     affect_polarity: str = "neutral"
@@ -621,11 +677,15 @@ class Features:
 
 class FeatureExtractor:
     POSITIVE_WORDS = {"vui", "ok", "tốt", "hay", "đỉnh", "vui vl", "haha", "lmao", "tuyệt", "ổn"}
-    NEGATIVE_WORDS = {"mệt", "buồn", "chán", "sấp", "sập", "khóc", "thất bại", "kiệt", "chết", "không muốn"}
+    NEGATIVE_WORDS = {"mệt", "buồn", "chán", "sấp", "sập", "khóc", "thất bại", "kiệt", "chết", "không muốn", "sụp đổ"}
     INTENSIFIERS = {"vl", "cực", "rất", "cái gì", "vãi", "không thể"}
-    JOB_WORDS = {"việc", "công ty", "job", "dự án", "code", "deadline", "sếp"}
+    # ⚡ THÊM "bug", "lỗi", "fix" VÀO JOB_WORDS
+    JOB_WORDS = {"việc", "công ty", "job", "dự án", "code", "deadline", "sếp", "bug", "lỗi", "fix"} 
     STATE_CHANGE = {"nghỉ", "thôi", "bắt đầu", "chuyển", "quit", "nghỉ việc", "bỏ"}
     DEFLECTION = {"không có gì", "thôi", "qua rồi", "không sao", "ỏn", "tao ổn"}
+    # ⚡ THÊM 2 SET MỚI
+    RISK_WORDS = {"làm điều ngu", "tự hại", "biến mất", "suicide", "kết thúc", "sụp đổ", "bỏ cuộc"}
+    SAD_EMOJIS = {"🥀", "😢", "😭", "💔"}
     
     def extract(self, text: str, prev_timestamp: float = None) -> Features:
         text_lower = text.lower().strip()
@@ -637,6 +697,14 @@ class FeatureExtractor:
         f.contains_state_change = any(w in text_lower for w in self.STATE_CHANGE)
         f.contains_deflection = any(w in text_lower for w in self.DEFLECTION)
         
+        # ⚡ THÊM LOGIC NHẬN DIỆN MỚI
+        f.contains_high_risk = any(w in text_lower for w in self.RISK_WORDS)
+        f.contains_sad_emoji = any(e in text for e in self.SAD_EMOJIS)
+        
+        if f.contains_sad_emoji:
+            f.contains_negative_affect = True
+            f.affect_polarity = "negative"
+            
         wc = len(text.split())
         f.message_length_bucket = "short" if wc <= 5 else "medium" if wc <= 20 else "long"
         
@@ -1525,44 +1593,99 @@ class SelfModelEngine:
         dom = max(self.vector, key=self.vector.get)
         return {"dominant_archetype": dom, "identity_vector": self.vector, "identity_core": self.core}
 
+class SituationAnalyzer:
+    @staticmethod
+    def analyze(feat_dict: dict) -> dict:
+        scores = {
+            "emotional_need": 0.0,
+            "risk": 0.0,
+            "problem_solving": 0.0,
+            "social_connection": 0.0
+        }
+        
+        # ⚡ CẬP NHẬT LẠI TRỌNG SỐ
+        if feat_dict.get("contains_negative_affect"):
+            scores["emotional_need"] += 0.8
+        if feat_dict.get("contains_sad_emoji"):
+            scores["emotional_need"] += 0.6
+        if feat_dict.get("affect_polarity") == "mixed":
+            scores["emotional_need"] += 0.4
+        if feat_dict.get("contains_deflection"):
+            scores["emotional_need"] += 0.3
+            
+        if feat_dict.get("contains_state_change"):
+            scores["risk"] += 0.6
+        if feat_dict.get("contains_high_risk"):
+            scores["risk"] += 0.9
+        if feat_dict.get("contains_intensifier") and feat_dict.get("contains_negative_affect"):
+            scores["risk"] += 0.4
+            
+        if feat_dict.get("contains_job_reference"):
+            scores["problem_solving"] += 0.8
+        if feat_dict.get("message_length_bucket") == "long":
+            scores["problem_solving"] += 0.4
+            
+        if feat_dict.get("contains_positive_affect"):
+            scores["social_connection"] += 0.8
+        if feat_dict.get("engagement_level") == "high":
+            scores["social_connection"] += 0.4
+            
+        for k, v in scores.items():
+            scores[k] = min(1.0, v)
+            
+        return scores
+
+
 class VoiceResolutionEngine:
-    IDENTITY_BASE_WEIGHT = 1.8
-    def __init__(self, sender_id: str):
+    """7.56.8: Tách bạch WHAT (Situation) và HOW (Identity). Identity = 0 vote."""
+    
+    IDENTITY_BIAS_WEIGHT = 0.0  # Identity không có quyền vote WHAT
+
+    def __init__(self, sender_id: str): 
         self.sender_id = sender_id
         self.self_model = SelfModelTracker(sender_id)
 
+    # Trong class VoiceResolutionEngine
     def resolve_v756(self, ctx: CognitiveContext) -> dict:
+        # ⚡ KHÔI PHỤC 2 DÒNG BỊ MẤT ⚡
         beliefs = ctx.worldview.get("active_beliefs", [])
-        mood = ctx.perception.get("mood_signal", "neutral")
-        relationship = ctx.user_state.get("relationship", 50)
-        recent_events = ctx.user_state.get("emotional_events", [])
-        self_state = ctx.self_model
+        feat_dict = ctx.perception.get("features", {})
+        
+        # 1. SITUATION ANALYSIS
+        situation = SituationAnalyzer.analyze(feat_dict)
+        
+        # 2. GENERATE VOICES
+        voices = self._generate_voices(beliefs, situation, ctx.self_model)
 
-        voices = self._generate_voices(beliefs, mood, recent_events, relationship, self_state)
-
-        forces = {"intervene": 0.0, "support": 0.0, "withdraw": 0.0, "overcompensate": 0.0, "obsess": 0.0, "explore": 0.0, "challenge": 0.0, "tease": 0.0}
+        # 3. VOTING (WHAT)
+        forces = {"intervene": 0.0, "support": 0.0, "withdraw": 0.0, "challenge": 0.0}
         for v in voices:
             if v["stance"] in forces: forces[v["stance"]] += v["weight"]
 
-        dominant_force = max(forces, key=forces.get) if voices else "default"
+        dominant_force = max(forces, key=forces.get) if voices else "support"
         top_voice = max(voices, key=lambda x: x["weight"]) if voices else {"speaker": "none", "opinion": "neutral"}
 
-        # LOG QUYẾT ĐỊNH ĐỂ BENCHMARK BẮT ĐƯỢC (MỚI)
-        log.info(f"[VOICE-DEBUG] archetype={self_state.get('archetype')} forces={forces} winner={dominant_force}")
-
-        decision = "support"
+        # 4. STYLING (HOW) - Identity chỉ làm stylist
+        archetype = ctx.self_model.get("archetype", "explorer")
+        
         interaction_mode = "natural"
-        if dominant_force in ("withdraw", "avoidance"): decision = "withdraw"; interaction_mode = "silence"
-        elif dominant_force in ("intervene", "overcompensate"): decision = "intervene"; interaction_mode = "direct"
-        elif dominant_force == "obsess": decision = "intervene"; interaction_mode = "clingy"
-        elif dominant_force == "explore": decision = "explore"; interaction_mode = "socratic"
-        elif dominant_force == "challenge": decision = "challenge"; interaction_mode = "direct"
-        elif dominant_force == "tease": decision = "tease"; interaction_mode = "playful"
+        if archetype == "explorer": interaction_mode = "socratic"
+        elif archetype == "builder": interaction_mode = "analytical"
+        elif archetype == "protector": interaction_mode = "comforting"
+        
+        # 5. MAP TO OUTPUT
+        decision = "support"
+        if dominant_force == "withdraw": 
+            decision = "withdraw"; interaction_mode = "silence"
+        elif dominant_force == "intervene": 
+            decision = "intervene"
+            if archetype == "protector": interaction_mode = "direct" 
+        elif dominant_force == "challenge": 
+            decision = "challenge"
+            if archetype == "builder": interaction_mode = "analytical"
         elif dominant_force == "support":
-            decision = "support"
-            if any(v["speaker"] == "trait:hint" and v["weight"] > 0.5 for v in voices): interaction_mode = "socratic"
-            else: interaction_mode = "natural"
-            
+            if archetype == "explorer" and situation["emotional_need"] < 0.5: interaction_mode = "socratic"
+
         warmth = 0.5
         roast_score = 0.0
         if decision == "withdraw": warmth = 0.8
@@ -1571,7 +1694,10 @@ class VoiceResolutionEngine:
             trait_roast = next((v for v in voices if v["speaker"] == "trait:roast"), None)
             if trait_roast: roast_score = trait_roast["weight"]
 
-        if relationship > 60 and mood != "stress": roast_score = max(roast_score, 0.3)
+        relationship = ctx.user_state.get("relationship", 50)
+        if relationship > 60 and situation["emotional_need"] < 0.5: roast_score = max(roast_score, 0.3)
+
+        log.info(f"[VOICE-DEBUG] sit={situation} forces={forces} winner={dominant_force} arch={archetype} mode={interaction_mode}")
 
         return {
             "decision": decision,
@@ -1579,60 +1705,57 @@ class VoiceResolutionEngine:
             "warmth_score": warmth,
             "roast_score": roast_score,
             "dominant_voice": top_voice,
-            "predicted_stance": decision
+            "predicted_stance": decision,
+            # ⚡ EXPOSE INTERNAL STATE CHO BENCHMARK ⚡
+            "_debug": {
+                "features": feat_dict,
+                "situation": situation,
+                "voices": voices,
+                "forces": forces,
+                "dominant_force": dominant_force
+            }
         }
-
-    def _generate_voices(self, beliefs: list[dict], mood: str, recent_events: list, relationship: int, self_state: dict) -> list[dict]:
-        voices = []
-        is_stressed = mood in ("stress", "low_mood", "annoyed", "highly biased towards Burnout") or any(evt.get("type") in ("stress", "sad") and (time.time() - evt.get("time", 0) < 10800) for evt in recent_events)
-        current_context_tags = ["stress"] if is_stressed else []
         
-        # 1. Belief-driven voices (cũ)
+    def _generate_voices(self, beliefs: list[dict], situation: dict, self_state: dict) -> list[dict]:
+        voices = []
+        
+        # 1. SITUATION VOICES (Lá phiếu mạnh nhất, từ message hiện tại)
+        if situation["risk"] > 0.5:
+            voices.append({"speaker": "situation:risk", "stance": "intervene", "weight": 2.0 * situation["risk"], "opinion": "Hành động rủi ro."})
+        if situation["emotional_need"] > 0.5:
+            voices.append({"speaker": "situation:emotion", "stance": "support", "weight": 1.5 * situation["emotional_need"], "opinion": "Cần hỗ trợ cảm xúc."})
+        if situation["problem_solving"] > 0.5:
+            voices.append({"speaker": "situation:problem", "stance": "challenge", "weight": 0.6 * situation["problem_solving"], "opinion": "Phân tích vấn đề."})
+            voices.append({"speaker": "situation:collab", "stance": "support", "weight": 0.5 * situation["problem_solving"], "opinion": "Cùng giải quyết."})
+        if situation["social_connection"] > 0.5:
+            voices.append({"speaker": "situation:social", "stance": "support", "weight": 1.0 * situation["social_connection"], "opinion": "Giao tiếp xã hội."})
+            
+        # 2. BELIEF VOICES (Baseline từ lịch sử, chỉ amplify situation)
         for b in beliefs:
             if b["domain"] == "communication":
-                if b["source_tag"] == "roast" and b["polarity"] == 1:
-                    voices.append({"speaker": "trait:roast", "stance": "tease", "weight": b["confidence"], "opinion": "Trêu đùa là cách gắn kết."})
+                if b["source_tag"] == "roast" and b["polarity"] == 1 and situation["emotional_need"] < 0.3:
+                    voices.append({"speaker": "trait:roast", "stance": "support", "weight": b["confidence"], "opinion": "Trêu đùa."})
                 elif b["source_tag"] == "hint" and b["polarity"] == 1:
-                    voices.append({"speaker": "trait:hint", "stance": "explore", "weight": b["confidence"], "opinion": "Để hắn tự khám phá."})
+                    voices.append({"speaker": "trait:hint", "stance": "support", "weight": b["confidence"], "opinion": "Gợi ý."})
 
         for b in beliefs:
             if b["domain"] == "core_value" and b["polarity"] == 1:
-                nuances = json.loads(b.get("nuances", "[]"))
-                active_nuance = None
-                for nuance in nuances:
-                    if isinstance(nuance, dict) and set(nuance.get("activation_tags", [])).issubset(set(current_context_tags)):
-                        active_nuance = nuance; break
+                situation_intensity = max(situation["risk"], situation["emotional_need"])
+                if situation_intensity > 0.5:
+                    voices.append({"speaker": "belief:core", "stance": "intervene", "weight": b["confidence"] * situation_intensity, "opinion": "Cần bảo vệ."})
+                elif situation["problem_solving"] > 0.5:
+                    voices.append({"speaker": "belief:core", "stance": "challenge", "weight": b["confidence"] * 0.5, "opinion": "Thử thách."})
 
-                if is_stressed:
-                    base_weight = b["confidence"] * 1.5
-                    opinion = f"{b['belief']} -> Cần bảo vệ hắn ngay."
-                    stance = "intervene"
-                    if active_nuance:
-                        opinion = f"{b['belief']} ({active_nuance['content']}) -> Phải cản bằng được."
-                        base_weight *= active_nuance.get("weight_modifier", 1.2)
-                        if active_nuance.get("stance_override"): stance = active_nuance["stance_override"]
-                    voices.append({"speaker": "belief:core", "stance": stance, "weight": base_weight, "opinion": opinion})
-                else:
-                    voices.append({"speaker": "belief:core", "stance": "support", "weight": b["confidence"], "opinion": f"{b['belief']} -> Tôn trọng hành trình."})
+        # 3. DEFAULT SITUATION
+        if not voices:
+            voices.append({"speaker": "default:social", "stance": "support", "weight": 0.5, "opinion": "Giao tiếp cơ bản."})
 
-        # 2. ARCHETYPE-DRIVEN VOICES (MỚI: Cấp quyền biểu quyết)
-        archetype = self_state.get("archetype", "explorer")
-        archetype_weight = self.IDENTITY_BASE_WEIGHT * self_state["model_accuracy"]
-        
-        if archetype == "explorer":
-            voices.append({"speaker": "archetype:explorer", "stance": "explore", "weight": archetype_weight, "opinion": "Đừng trực tiếp giúp. Hãy gợi ý để hắn tự đi."})
-        elif archetype == "builder":
-            voices.append({"speaker": "archetype:builder", "stance": "challenge", "weight": archetype_weight, "opinion": "Phân tích lỗi và build system. Đừng có nghe than vãn."})
-        elif archetype == "protector":
-            voices.append({"speaker": "archetype:protector", "stance": "intervene", "weight": archetype_weight, "opinion": "Phải can thiệp ngay. Hắn đang yếu."})
-        else:
-            voices.append({"speaker": "archetype:anchor", "stance": "support", "weight": archetype_weight, "opinion": "Ở cạnh hắn là được."})
-
-        # 3. Doubt voices (cũ)
+        # 4. DOUBT VOICES
         if self_state["model_accuracy"] < 0.5:
-            if self_state["doubt_style"] == "avoidance": voices.append({"speaker": "self_model:doubt", "stance": "withdraw", "weight": 1.5, "opinion": "Mô hình của mình về hắn đang sai. Nên lùi lại."})
-            elif self_state["doubt_style"] == "overcompensation": voices.append({"speaker": "self_model:doubt", "stance": "overcompensate", "weight": 1.8, "opinion": "Mình đã sai khi bỏ mặc. Lần này mình PHẢI can thiệp."})
-            elif self_state["doubt_style"] == "obsession": voices.append({"speaker": "self_model:doubt", "stance": "obsess", "weight": 1.7, "opinion": "Phải giám sát chặt hơn. Hỏi liên tục. Không được buông."})
+            if self_state["doubt_style"] == "avoidance": voices.append({"speaker": "self_model:doubt", "stance": "withdraw", "weight": 1.5, "opinion": "Lùi lại."})
+            elif self_state["doubt_style"] == "overcompensation": voices.append({"speaker": "self_model:doubt", "stance": "intervene", "weight": 1.8, "opinion": "Phải can thiệp."})
+            elif self_state["doubt_style"] == "obsession": voices.append({"speaker": "self_model:doubt", "stance": "intervene", "weight": 1.7, "opinion": "Giám sát."})
+            
         return voices
 
 MAX_MIND_CACHE = 500
@@ -2311,5 +2434,5 @@ def schedule_follow_up(sender_id: str):
 
 if __name__ == "__main__":
     os.makedirs(GRAPHS_DIR, exist_ok=True)
-    log.info("Mind v7.56 — The Cognitive Spine Running (Complete)...")
+    log.info("Mind v7.56.8 — The Cognitive Spine Running...")
     app.run(host="0.0.0.0", port=5000, debug=False)
