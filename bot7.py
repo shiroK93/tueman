@@ -111,10 +111,6 @@ if not FB_APP_SECRET:
     log.warning("[SECURITY] FB_APP_SECRET is not set — incoming webhook POSTs cannot be signature-verified and will be rejected until it is configured.")
 
 # ╔═══════════════════════════════════════════════════════════════╗
-# ║  7.56: COGNITIVE SPINE CONTRACTS (LOCKED V2.0)                ║
-# ╚═══════════════════════════════════════════════════════════════╝
-
-# ╔═══════════════════════════════════════════════════════════════╗
 # ║  7.56.6: COGNITIVE SPINE CONTRACTS (HYPOTHESIS MARKET)        ║
 # ╚═══════════════════════════════════════════════════════════════╝
 
@@ -673,6 +669,20 @@ class OrthogonalPrediction:
         return not any(f in self.source_features for f in self.predicted_features)
 
 @dataclass
+class OrthogonalPrediction:
+    hypothesis_id: str
+    predicted_features: list[str]
+    expected_within_cycles: int = 5
+    created_at: float = field(default_factory=time.time)
+    resolved: bool = False
+    outcome: Optional[str] = None
+    source_features: list[str] = field(default_factory=list)
+    audit_id: int = 0  # 7.56.8: Link to audit DB
+    
+    def is_valid(self) -> bool:
+        return not any(f in self.source_features for f in self.predicted_features)
+
+@dataclass
 class StructuredHypothesis:
     claim: str
     confidence: float = 0.15
@@ -683,6 +693,8 @@ class StructuredHypothesis:
     predicts_confirm: list = field(default_factory=list)
     predicts_refute: list = field(default_factory=list)
     active_predictions: list = field(default_factory=list)
+    source: str = "llm"  # 7.56.8: Track generator source
+    sender_id: str = ""  # 7.56.8: For audit tracking
     
     def tick(self) -> bool:
         age_hours = (time.time() - self.created_at) / 3600
@@ -693,7 +705,6 @@ class StructuredHypothesis:
         return True
         
     def generate_predictions(self, source_features: list):
-        """Mìn F: Sinh dự đoán orthogonal"""
         system = f"""Given a behavioral pattern, predict 2-3 FUTURE features that would confirm it.
 CRITICAL: DO NOT predict features that are ALREADY TRUE.
 Already true: {source_features}
@@ -709,11 +720,14 @@ Return ONLY JSON list of feature names.
                     source_features=source_features
                 )
                 if pred.is_valid():
+                    # 7.56.8: Register with audit
+                    pred.audit_id = _audit_system.register(
+                        self.sender_id, self.claim, self.source, [p], source_features
+                    )
                     self.active_predictions.append(pred)
         except: pass
 
     def test_predictions(self, features: Features):
-        """Bom J: Log Score thay vì Accuracy"""
         feat_dict = asdict(features)
         for pred in self.active_predictions:
             if pred.resolved: continue
@@ -722,18 +736,21 @@ Return ONLY JSON list of feature names.
             if matched:
                 pred.resolved = True
                 pred.outcome = "confirmed"
-                # Log score reward
-                p_bundle = 0.2 # giả định base rate thấp cho feature hiếm
+                p_bundle = 0.2
                 info_gain = -math.log2(max(0.01, p_bundle))
                 self.confidence = min(0.5, self.confidence + info_gain * 0.05)
                 self.evidence_count += 1
-                self.created_at = time.time() # Reset TTL
+                self.created_at = time.time()
+                # 7.56.8: Audit resolve
+                _audit_system.resolve(pred.audit_id, "confirmed", info_gain)
             else:
                 age_cycles = int((time.time() - pred.created_at) / 3600)
                 if age_cycles >= pred.expected_within_cycles:
                     pred.resolved = True
                     pred.outcome = "expired"
                     self.contradict(0.05)
+                    # 7.56.8: Audit resolve
+                    _audit_system.resolve(pred.audit_id, "expired", 0.0)
 
     def reinforce(self, amount: float = 0.12):
         self.evidence_count += 1
@@ -751,6 +768,9 @@ class HypothesisMarket:
         self.hypotheses: list[StructuredHypothesis] = []
         
     def tick(self, features: Features):
+        # 7.56.8: Tick audit cycle counter
+        _audit_system.tick_unresolved(self.sender_id)
+        
         alive = []
         feat_keys = [k for k, v in asdict(features).items() if v is True or v in ["high", "low", "short", "delayed"]]
         
@@ -772,11 +792,14 @@ DO NOT use psychological terms. Return ONLY JSON list.
             raw = self.router.generate(system, [{"role": "user", "content": user_msg}], max_tokens=150)
             data = json.loads(raw.replace("```json", "").replace("```", "").strip())
             for h in data:
-                self.hypotheses.append(StructuredHypothesis(
+                hyp = StructuredHypothesis(
                     claim=h.get("claim", "Unknown"),
                     predicts_confirm=h.get("predicts_confirm", []),
-                    predicts_refute=h.get("predicts_refute", [])
-                ))
+                    predicts_refute=h.get("predicts_refute", []),
+                    source="llm",
+                    sender_id=self.sender_id
+                )
+                self.hypotheses.append(hyp)
         except: pass
             
     def get_top_k(self, k: int = 3) -> list[StructuredHypothesis]:
@@ -792,10 +815,6 @@ DO NOT use psychological terms. Return ONLY JSON list.
         return entropy / math.log2(len(self.hypotheses))
 
 _hypothesis_markets: dict[str, HypothesisMarket] = {}
-def get_hypothesis_market(sender_id: str) -> HypothesisMarket:
-    if sender_id not in _hypothesis_markets:
-        _hypothesis_markets[sender_id] = HypothesisMarket(sender_id, _router)
-    return _hypothesis_markets[sender_id]
 def get_hypothesis_market(sender_id: str) -> HypothesisMarket:
     if sender_id not in _hypothesis_markets:
         _hypothesis_markets[sender_id] = HypothesisMarket(sender_id, _router)
@@ -881,6 +900,135 @@ class BeliefPromotionGate:
                      (sender_id, h.claim[:200], json.dumps(condition), json.dumps(outcome), h.confidence, h.evidence_count))
         conn.commit(); conn.close()
         log.info(f"[PROMOTE] Hypothesis '{h.claim[:40]}' → Statistical Belief")
+
+# ╔═══════════════════════════════════════════════════════════════╗
+# ║  7.56.8: PREDICTION AUDIT SYSTEM                              ║
+# ║  "Nếu m không đo nó, m không thể cải thiện nó."               ║
+# ╚═══════════════════════════════════════════════════════════════╝
+
+class PredictionAuditSystem:
+    """Track mọi prediction. Tính accuracy. Tìm generator nào đang lừa gạt."""
+    
+    def __init__(self, db_path: str = None):
+        self.db_path = db_path or DB_PATH
+        self._init_table()
+    
+    def _init_table(self):
+        conn = sqlite3.connect(self.db_path, timeout=DB_TIMEOUT, check_same_thread=False)
+        conn.execute("""CREATE TABLE IF NOT EXISTS prediction_audit (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            sender_id TEXT NOT NULL,
+            hypothesis_claim TEXT NOT NULL,
+            hypothesis_source TEXT DEFAULT 'llm',
+            predicted_features TEXT NOT NULL,
+            source_features TEXT NOT NULL,
+            created_at REAL NOT NULL,
+            resolved_at REAL DEFAULT NULL,
+            result TEXT DEFAULT NULL,
+            surprisal REAL DEFAULT NULL,
+            cycle_count INTEGER DEFAULT 0
+        )""")
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_audit_sender ON prediction_audit(sender_id)")
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_audit_resolved ON prediction_audit(resolved_at)")
+        conn.commit(); conn.close()
+    
+    def register(self, sender_id: str, claim: str, source: str, predicted: list, source_feats: list) -> int:
+        conn = sqlite3.connect(self.db_path, timeout=DB_TIMEOUT, check_same_thread=False)
+        c = conn.cursor()
+        c.execute("""INSERT INTO prediction_audit 
+            (sender_id, hypothesis_claim, hypothesis_source, predicted_features, source_features, created_at)
+            VALUES (?, ?, ?, ?, ?, ?)""",
+            (sender_id, claim[:200], source, json.dumps(predicted), json.dumps(source_feats), time.time()))
+        pid = c.lastrowid
+        conn.commit(); conn.close()
+        return pid
+    
+    def resolve(self, audit_id: int, result: str, surprisal: float = 0.0):
+        if not audit_id: return
+        conn = sqlite3.connect(self.db_path, timeout=DB_TIMEOUT, check_same_thread=False)
+        conn.execute("""UPDATE prediction_audit 
+            SET resolved_at=?, result=?, surprisal=? WHERE id=?""",
+            (time.time(), result, surprisal, audit_id))
+        conn.commit(); conn.close()
+    
+    def tick_unresolved(self, sender_id: str):
+        conn = sqlite3.connect(self.db_path, timeout=DB_TIMEOUT, check_same_thread=False)
+        conn.execute("""UPDATE prediction_audit 
+            SET cycle_count = cycle_count + 1 
+            WHERE sender_id=? AND resolved_at IS NULL""", (sender_id,))
+        conn.commit(); conn.close()
+    
+    def report(self, sender_id: str = None, last_n: int = 100) -> dict:
+        conn = sqlite3.connect(self.db_path, timeout=DB_TIMEOUT, check_same_thread=False)
+        c = conn.cursor()
+        
+        query = """SELECT hypothesis_source, result, surprisal, cycle_count, predicted_features 
+                   FROM prediction_audit WHERE resolved_at IS NOT NULL"""
+        params = []
+        if sender_id:
+            query += " AND sender_id=?"
+            params.append(sender_id)
+        query += " ORDER BY resolved_at DESC LIMIT ?"
+        params.append(last_n)
+        
+        c.execute(query, params)
+        rows = c.fetchall()
+        conn.close()
+        
+        if not rows:
+            return {"total": 0, "accuracy": 0.0, "by_source": {}}
+        
+        by_source = {}
+        by_feature = {}
+        total_correct = 0
+        
+        for source, result, surprisal, cycles, pred_feats_json in rows:
+            if source not in by_source:
+                by_source[source] = {"total": 0, "correct": 0, "expired": 0, "refuted": 0, "avg_surprisal": 0.0, "avg_cycles": 0.0}
+            
+            by_source[source]["total"] += 1
+            if result == "confirmed":
+                by_source[source]["correct"] += 1
+                total_correct += 1
+            elif result == "expired":
+                by_source[source]["expired"] += 1
+            elif result == "refuted":
+                by_source[source]["refuted"] += 1
+            
+            by_source[source]["avg_surprisal"] += surprisal or 0.0
+            by_source[source]["avg_cycles"] += cycles or 0
+            
+            # Per-feature tracking
+            try:
+                feats = json.loads(pred_feats_json)
+                for f in feats:
+                    if f not in by_feature:
+                        by_feature[f] = {"total": 0, "correct": 0}
+                    by_feature[f]["total"] += 1
+                    if result == "confirmed":
+                        by_feature[f]["correct"] += 1
+            except: pass
+        
+        for source, stats in by_source.items():
+            stats["accuracy"] = stats["correct"] / stats["total"] if stats["total"] > 0 else 0.0
+            stats["avg_surprisal"] = round(stats["avg_surprisal"] / stats["total"], 3) if stats["total"] > 0 else 0.0
+            stats["avg_cycles"] = round(stats["avg_cycles"] / stats["total"], 1) if stats["total"] > 0 else 0.0
+        
+        for f, stats in by_feature.items():
+            stats["accuracy"] = stats["correct"] / stats["total"] if stats["total"] > 0 else 0.0
+        
+        # Sort features by total (most predicted first)
+        by_feature = dict(sorted(by_feature.items(), key=lambda x: x[1]["total"], reverse=True))
+        
+        return {
+            "total": len(rows),
+            "accuracy": round(total_correct / len(rows), 3),
+            "by_source": by_source,
+            "by_feature": by_feature
+        }
+
+# Global instance
+_audit_system = PredictionAuditSystem()
 
 # ╔═══════════════════════════════════════════════════════════════╗
 # ║  7.56: FORWARD & BACKWARD SPINE                               ║
@@ -1182,8 +1330,19 @@ class BeliefSystem:
         row = c.fetchone()
         if not row: conn.close(); return
         old_conf, old_score, old_state = row
-        new_conf = min(BELIEF_CONFIG["max_conf"], old_conf + r.get("delta", 0.05))
-        c.execute("UPDATE beliefs SET confidence = ?, evidence_count = evidence_count + ?, contradiction_score = MAX(0, ?), state = 'CONFIRMED', last_confirmed = CURRENT_TIMESTAMP WHERE id=?", (new_conf, r.get("new_count", 1), old_score - r.get("delta", 0.05), r["belief_id"]))
+        
+        # IDENTITY-BIASED LEARNING
+        mind = get_mind(self.sender_id)
+        modulator = 1.0
+        if r.get("source_tag") == "challenge":
+            modulator = mind.identity_engine.get_modulator("novelty")
+        elif r.get("source_tag") == "hint":
+            modulator = mind.identity_engine.get_modulator("consistency")
+            
+        delta = r.get("delta", 0.05) * modulator
+        new_conf = min(BELIEF_CONFIG["max_conf"], old_conf + delta)
+        
+        c.execute("UPDATE beliefs SET confidence = ?, evidence_count = evidence_count + ?, contradiction_score = MAX(0, ?), state = 'CONFIRMED', last_confirmed = CURRENT_TIMESTAMP WHERE id=?", (new_conf, r.get("new_count", 1), old_score - delta, r["belief_id"]))
         conn.commit(); conn.close()
     def _contradict(self, r: dict):
         delta = r.get("delta", -0.1); abs_delta = abs(delta)
@@ -1295,28 +1454,76 @@ class SelfModelTracker:
         conn.commit(); conn.close()
 
 class SelfModelEngine:
-    """7.56: Renamed from IdentityEngine. It's a self-model, not an identity yet."""
+    """7.56: Identity Core (slow drift) vs Surface (fast adaptation)."""
     def __init__(self):
         self.archetype_profiles = {"explorer": {"independence": 0.8, "growth": 0.7, "social": -0.5}, "builder": {"social": 0.8, "growth": 0.6, "independence": -0.2}}
+        
+        # Core: Rất khó đổi (cần 500 bằng chứng cùng hướng)
+        self.core: Dict[str, float] = {"explorer": 0.8, "builder": 0.2}
+        # Surface: Dễ đổi (cập nhật mỗi tradeoff)
         self.vector: Dict[str, float] = {"explorer": 0.8, "builder": 0.2}
-    def get_tolerance_modifier(self, value_id: str) -> float:
+        
+        self._core_drift_tracker = {"explorer": 0, "builder": 0}
+        self.core_update_threshold = 500
+        
+        self.modulators = {
+            "explorer": {"novelty": 1.5, "stress": 1.0, "consistency": 0.7},
+            "builder": {"novelty": 0.7, "stress": 1.0, "consistency": 1.5}
+        }
+        
+    def get_modulator(self, tag: str) -> float:
+        # FIX 1: Blended Modulators (Không dùng max, dùng weighted sum)
+        # 0.8 Explorer + 0.2 Builder = 1.5*0.8 + 0.7*0.2 = 1.34
+        total_weight = 0.0
+        for arch, weight in self.core.items():
+            mod_val = self.modulators.get(arch, {}).get(tag, 1.0)
+            total_weight += mod_val * weight
+        return total_weight
+        
+    def get_tolerance_modifier(self, value_id: str) -> float: 
         return sum(self.archetype_profiles[arch].get(value_id, 0.0) * weight for arch, weight in self.vector.items()) * 0.5
+        
     def evolve(self, trait_to_boost: str, trait_to_weaken: str, boost_amt: float = 0.1):
+        # 1. Evolve Surface (như cũ)
         if trait_to_boost in self.vector: self.vector[trait_to_boost] = min(1.0, self.vector[trait_to_boost] + boost_amt)
         if trait_to_weaken in self.vector: self.vector[trait_to_weaken] = max(0.0, self.vector[trait_to_weaken] - (boost_amt * 0.5))
-        self._normalize()
+        self._normalize_surface()
+        
+        # 2. Track Core Drift
+        if trait_to_boost in self._core_drift_tracker:
+            self._core_drift_tracker[trait_to_boost] += 1
+        if trait_to_weaken in self._core_drift_tracker:
+            self._core_drift_tracker[trait_to_weaken] -= 1
+            
+        # 3. Update Core nếu đủ evidence (slow drift)
+        for arch, count in self._core_drift_tracker.items():
+            if abs(count) >= self.core_update_threshold:
+                delta = 0.01 if count > 0 else -0.01
+                self.core[arch] = max(0.01, min(0.99, self.core[arch] + delta))
+                self._core_drift_tracker[arch] = 0  # Reset tracker
+                self._normalize_core()
+                log.info(f"[CORE-DRIFT] Identity Core updated: {self.core}")
+                
     def update_from_tradeoff(self, winner_id: str, sacrificed_id: str):
+        # Surface evolves
         for arch, profile in self.archetype_profiles.items():
             shift = (profile.get(winner_id, 0.0) - profile.get(sacrificed_id, 0.0)) * 0.02
             if shift: self.vector[arch] = max(0.0, min(1.0, self.vector.get(arch, 0.0) + shift))
-        self._normalize()
-    def _normalize(self):
+        self._normalize_surface()
+        
+    def _normalize_surface(self):
         total = sum(self.vector.values())
         if total == 0: return
         self.vector = {k: v/total for k, v in self.vector.items()}
+        
+    def _normalize_core(self):
+        total = sum(self.core.values())
+        if total == 0: return
+        self.core = {k: v/total for k, v in self.core.items()}
+        
     def get_identity_context(self) -> dict:
         dom = max(self.vector, key=self.vector.get)
-        return {"dominant_archetype": dom, "identity_vector": self.vector}
+        return {"dominant_archetype": dom, "identity_vector": self.vector, "identity_core": self.core}
 
 class VoiceResolutionEngine:
     IDENTITY_BASE_WEIGHT = 1.8
@@ -1333,21 +1540,29 @@ class VoiceResolutionEngine:
 
         voices = self._generate_voices(beliefs, mood, recent_events, relationship, self_state)
 
-        forces = {"intervene": 0.0, "support": 0.0, "withdraw": 0.0, "overcompensate": 0.0, "obsess": 0.0}
+        forces = {"intervene": 0.0, "support": 0.0, "withdraw": 0.0, "overcompensate": 0.0, "obsess": 0.0, "explore": 0.0, "challenge": 0.0, "tease": 0.0}
         for v in voices:
             if v["stance"] in forces: forces[v["stance"]] += v["weight"]
 
         dominant_force = max(forces, key=forces.get) if voices else "default"
         top_voice = max(voices, key=lambda x: x["weight"]) if voices else {"speaker": "none", "opinion": "neutral"}
 
+        # LOG QUYẾT ĐỊNH ĐỂ BENCHMARK BẮT ĐƯỢC (MỚI)
+        log.info(f"[VOICE-DEBUG] archetype={self_state.get('archetype')} forces={forces} winner={dominant_force}")
+
         decision = "support"
         interaction_mode = "natural"
         if dominant_force in ("withdraw", "avoidance"): decision = "withdraw"; interaction_mode = "silence"
         elif dominant_force in ("intervene", "overcompensate"): decision = "intervene"; interaction_mode = "direct"
         elif dominant_force == "obsess": decision = "intervene"; interaction_mode = "clingy"
+        elif dominant_force == "explore": decision = "explore"; interaction_mode = "socratic"
+        elif dominant_force == "challenge": decision = "challenge"; interaction_mode = "direct"
+        elif dominant_force == "tease": decision = "tease"; interaction_mode = "playful"
         elif dominant_force == "support":
-            if any(v["speaker"] == "trait:hint" and v["weight"] > 0.5 for v in voices): decision = "support"; interaction_mode = "socratic"
-
+            decision = "support"
+            if any(v["speaker"] == "trait:hint" and v["weight"] > 0.5 for v in voices): interaction_mode = "socratic"
+            else: interaction_mode = "natural"
+            
         warmth = 0.5
         roast_score = 0.0
         if decision == "withdraw": warmth = 0.8
@@ -1371,13 +1586,14 @@ class VoiceResolutionEngine:
         voices = []
         is_stressed = mood in ("stress", "low_mood", "annoyed", "highly biased towards Burnout") or any(evt.get("type") in ("stress", "sad") and (time.time() - evt.get("time", 0) < 10800) for evt in recent_events)
         current_context_tags = ["stress"] if is_stressed else []
-
+        
+        # 1. Belief-driven voices (cũ)
         for b in beliefs:
             if b["domain"] == "communication":
                 if b["source_tag"] == "roast" and b["polarity"] == 1:
-                    voices.append({"speaker": "trait:roast", "stance": "support", "weight": b["confidence"], "opinion": "Trêu đùa là cách gắn kết."})
+                    voices.append({"speaker": "trait:roast", "stance": "tease", "weight": b["confidence"], "opinion": "Trêu đùa là cách gắn kết."})
                 elif b["source_tag"] == "hint" and b["polarity"] == 1:
-                    voices.append({"speaker": "trait:hint", "stance": "support", "weight": b["confidence"], "opinion": "Để hắn tự khám phá."})
+                    voices.append({"speaker": "trait:hint", "stance": "explore", "weight": b["confidence"], "opinion": "Để hắn tự khám phá."})
 
         for b in beliefs:
             if b["domain"] == "core_value" and b["polarity"] == 1:
@@ -1399,9 +1615,20 @@ class VoiceResolutionEngine:
                 else:
                     voices.append({"speaker": "belief:core", "stance": "support", "weight": b["confidence"], "opinion": f"{b['belief']} -> Tôn trọng hành trình."})
 
-        if relationship > 20:
-            voices.append({"speaker": "identity:anchor", "stance": "intervene" if is_stressed else "support", "weight": self.IDENTITY_BASE_WEIGHT * self_state["model_accuracy"], "opinion": f"[{self_state['role']}] Ta sẽ không để Thắng gục ngã một mình."})
+        # 2. ARCHETYPE-DRIVEN VOICES (MỚI: Cấp quyền biểu quyết)
+        archetype = self_state.get("archetype", "explorer")
+        archetype_weight = self.IDENTITY_BASE_WEIGHT * self_state["model_accuracy"]
+        
+        if archetype == "explorer":
+            voices.append({"speaker": "archetype:explorer", "stance": "explore", "weight": archetype_weight, "opinion": "Đừng trực tiếp giúp. Hãy gợi ý để hắn tự đi."})
+        elif archetype == "builder":
+            voices.append({"speaker": "archetype:builder", "stance": "challenge", "weight": archetype_weight, "opinion": "Phân tích lỗi và build system. Đừng có nghe than vãn."})
+        elif archetype == "protector":
+            voices.append({"speaker": "archetype:protector", "stance": "intervene", "weight": archetype_weight, "opinion": "Phải can thiệp ngay. Hắn đang yếu."})
+        else:
+            voices.append({"speaker": "archetype:anchor", "stance": "support", "weight": archetype_weight, "opinion": "Ở cạnh hắn là được."})
 
+        # 3. Doubt voices (cũ)
         if self_state["model_accuracy"] < 0.5:
             if self_state["doubt_style"] == "avoidance": voices.append({"speaker": "self_model:doubt", "stance": "withdraw", "weight": 1.5, "opinion": "Mô hình của mình về hắn đang sai. Nên lùi lại."})
             elif self_state["doubt_style"] == "overcompensation": voices.append({"speaker": "self_model:doubt", "stance": "overcompensate", "weight": 1.8, "opinion": "Mình đã sai khi bỏ mặc. Lần này mình PHẢI can thiệp."})
@@ -1578,9 +1805,12 @@ def get_user_state(sender_id: str):
 def update_user_state(sender_id: str, user_message: str):
     state = get_user_state(sender_id); now_ts = time.time(); msg = user_message.lower()
     state["last_seen_gap"] = (now_ts - state["last_interaction"]) / 3600
+    
+    # Bỏ stress_modulator ở đây. Emotion là vật lý universal.
     for key, value in {"mệt": "stress", "stress": "stress", "áp lực": "stress", "buồn": "sad", "chán": "low_mood"}.items():
         if key in msg: state["emotional_events"].append({"type": value, "time": now_ts})
     state["emotional_events"] = state["emotional_events"][-20:]
+    
     if len(user_message.strip()) < 8: state["spam_count"] += 1
     else: state["spam_count"] = max(0, state["spam_count"] - 1)
     if any(x in msg for x in ["nhớ", "thương", "yêu"]): state["affection"] += random.randint(1, 3)
