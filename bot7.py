@@ -1647,7 +1647,6 @@ class VoiceResolutionEngine:
 
     # Trong class VoiceResolutionEngine
     def resolve_v756(self, ctx: CognitiveContext) -> dict:
-        # ⚡ KHÔI PHỤC 2 DÒNG BỊ MẤT ⚡
         beliefs = ctx.worldview.get("active_beliefs", [])
         feat_dict = ctx.perception.get("features", {})
         
@@ -1665,9 +1664,8 @@ class VoiceResolutionEngine:
         dominant_force = max(forces, key=forces.get) if voices else "support"
         top_voice = max(voices, key=lambda x: x["weight"]) if voices else {"speaker": "none", "opinion": "neutral"}
 
-        # 4. STYLING (HOW) - Identity chỉ làm stylist
+        # 4. STYLING (HOW)
         archetype = ctx.self_model.get("archetype", "explorer")
-        
         interaction_mode = "natural"
         if archetype == "explorer": interaction_mode = "socratic"
         elif archetype == "builder": interaction_mode = "analytical"
@@ -1694,11 +1692,6 @@ class VoiceResolutionEngine:
             trait_roast = next((v for v in voices if v["speaker"] == "trait:roast"), None)
             if trait_roast: roast_score = trait_roast["weight"]
 
-        relationship = ctx.user_state.get("relationship", 50)
-        if relationship > 60 and situation["emotional_need"] < 0.5: roast_score = max(roast_score, 0.3)
-
-        log.info(f"[VOICE-DEBUG] sit={situation} forces={forces} winner={dominant_force} arch={archetype} mode={interaction_mode}")
-
         return {
             "decision": decision,
             "interaction_mode": interaction_mode,
@@ -1706,11 +1699,8 @@ class VoiceResolutionEngine:
             "roast_score": roast_score,
             "dominant_voice": top_voice,
             "predicted_stance": decision,
-            # ⚡ EXPOSE INTERNAL STATE CHO BENCHMARK ⚡
+            # ⚡ CHỈ EXPOSE FORCES ĐỂ BENCHMARK KHÔNG BỊ COUPLING VÀO VOICES/EVIDENCE ⚡
             "_debug": {
-                "features": feat_dict,
-                "situation": situation,
-                "voices": voices,
                 "forces": forces,
                 "dominant_force": dominant_force
             }
@@ -1719,18 +1709,18 @@ class VoiceResolutionEngine:
     def _generate_voices(self, beliefs: list[dict], situation: dict, self_state: dict) -> list[dict]:
         voices = []
         
-        # 1. SITUATION VOICES (Lá phiếu mạnh nhất, từ message hiện tại)
+        # 1. SITUATION VOICES
         if situation["risk"] > 0.5:
             voices.append({"speaker": "situation:risk", "stance": "intervene", "weight": 2.0 * situation["risk"], "opinion": "Hành động rủi ro."})
         if situation["emotional_need"] > 0.5:
             voices.append({"speaker": "situation:emotion", "stance": "support", "weight": 1.5 * situation["emotional_need"], "opinion": "Cần hỗ trợ cảm xúc."})
         if situation["problem_solving"] > 0.5:
-            voices.append({"speaker": "situation:problem", "stance": "challenge", "weight": 0.6 * situation["problem_solving"], "opinion": "Phân tích vấn đề."})
+            voices.append({"speaker": "situation:problem", "stance": "challenge", "weight": 1.2 * situation["problem_solving"], "opinion": "Phân tích vấn đề."})
             voices.append({"speaker": "situation:collab", "stance": "support", "weight": 0.5 * situation["problem_solving"], "opinion": "Cùng giải quyết."})
         if situation["social_connection"] > 0.5:
             voices.append({"speaker": "situation:social", "stance": "support", "weight": 1.0 * situation["social_connection"], "opinion": "Giao tiếp xã hội."})
             
-        # 2. BELIEF VOICES (Baseline từ lịch sử, chỉ amplify situation)
+        # 2. BELIEF VOICES
         for b in beliefs:
             if b["domain"] == "communication":
                 if b["source_tag"] == "roast" and b["polarity"] == 1 and situation["emotional_need"] < 0.3:
