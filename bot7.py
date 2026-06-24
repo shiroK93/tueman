@@ -101,7 +101,7 @@ logging.basicConfig(
 log = logging.getLogger(__name__)
 
 # ╔═══════════════════════════════════════════════════════════════╗
-# ║  7.58 PREP: MEANING ENGINE FIREWALL                            ║
+# ║  7.58 PREP: MEANING ENGINE FIREWALL                           ║
 # ╚═══════════════════════════════════════════════════════════════╝
 
 @dataclass
@@ -190,12 +190,24 @@ class SelfModelOutput(TypedDict):
     doubt_style: str
     identity_vector: dict
 
+# [SCHEMA AUDIT FIX] dominant_voice is assigned a dict at runtime (see
+# VoiceResolutionEngine.resolve_v756 -> top_voice), never a str. VoiceSummary
+# documents the actual shape so debug/report code can rely on a typed
+# contract instead of an ad-hoc isinstance() check. total=False because the
+# no-voices fallback ({"speaker": "none", "opinion": "neutral"}) omits
+# "weight" and "stance" — this reflects existing runtime behavior, unchanged.
+class VoiceSummary(TypedDict, total=False):
+    speaker: str
+    stance: str
+    weight: float
+    opinion: str
+
 class VoiceOutput(TypedDict):
     decision: str
     interaction_mode: str
     warmth: float
     roast_score: float
-    dominant_voice: str
+    dominant_voice: VoiceSummary  # [SCHEMA AUDIT FIX] was: str
 
 class ResponseMetadata(TypedDict):
     response_id: int
@@ -404,7 +416,7 @@ _graph_lock = threading.Lock()
 
 def _seed_initial_concepts(graph: CognitiveGraph):
     concepts = [
-        ("c_self_doubt", "Self_Doubt", ["dở", "kém", "giỏi", "đủ tốt", "mình", "thất bại", "sai", "lỗi"]),
+        ("c_self_doubt", "Self_Doubt", ["dở", "kém", "đủ tốt", "thất bại", "sai", "lỗi"]),
         ("c_growth", "Growth", ["tiến bộ", "cơ hội", "học hỏi", "sửa sai", "phát triển"]),
         ("c_resilience", "Resilience", ["đứng lên", "kiên trì", "không bỏ cuộc", "vượt qua"]),
         ("c_anxiety", "Anxiety", ["lo lắng", "áp lực", "sợ", "nervous", "hoang mang"]),
@@ -529,7 +541,9 @@ class ProviderRouter:
             response = provider.generate(system, messages, max_tokens)
             if response: return response, None
             return None, RuntimeError(f"{provider.name} empty")
+            print(f"Trying {provider.name}")
         except Exception as e:
+        
             self._mark_cooldown(provider.name, e)
             return None, e
 
@@ -627,6 +641,7 @@ def migrate_belief_system_v47():
         "ALTER TABLE beliefs ADD COLUMN nuances TEXT DEFAULT '[]'",
         "ALTER TABLE beliefs ADD COLUMN counter_evidence TEXT DEFAULT '[]'",
         "ALTER TABLE beliefs ADD COLUMN relationship_evolution TEXT DEFAULT ''",
+        "ALTER TABLE experiences ADD COLUMN features_json TEXT DEFAULT ''",
     ]:
         try: c.execute(ddl)
         except: pass
@@ -913,6 +928,19 @@ class FeatureRegistry:
     def hash_condition(cls, condition: dict) -> dict:
         return {cls.register(k): v for k, v in condition.items()}
 
+# ------------------------------------------------------------------
+# DEPRECATED (7.56)
+#
+# StatisticalBelief + BeliefPromotionGate promote hypotheses into
+# `statistical_beliefs`, a table nothing currently reads back.
+# This is Evidence -> Answer -> Store Answer — the exact pattern the
+# Memory Ontology handoff rejects.
+#
+# Long-term Memory Ontology stores evidence, not beliefs.
+#
+# Do not expand this. No new promotion criteria, no new consumers
+# for statistical_beliefs. Fix bugs only.
+# ------------------------------------------------------------------
 @dataclass
 class StatisticalBelief:
     condition: dict          # {feature_hash: True}
@@ -1097,6 +1125,64 @@ class PredictionAuditSystem:
 
 # Global instance
 _audit_system = PredictionAuditSystem()
+
+# ╔═══════════════════════════════════════════════════════════════╗
+# ║  7.57: MINIMAL VIABLE SUBSTRATE (EVIDENCE ONLY)               ║
+# ║  1 Table. 2 Methods. No philosophy.                          ║
+# ╚═══════════════════════════════════════════════════════════════╝
+
+class MemoryOS:
+    """The Archaeological Substrate. Append-only."""
+    
+    def __init__(self, db_path: str):
+        self.db_path = db_path
+        self._init_table()
+        
+    def _init_table(self):
+        conn = sqlite3.connect(self.db_path, timeout=DB_TIMEOUT, check_same_thread=False)
+        c = conn.cursor()
+        c.execute("""CREATE TABLE IF NOT EXISTS mos_observations (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            sender_id TEXT NOT NULL,
+            timestamp REAL NOT NULL,
+            raw_text TEXT NOT NULL,
+            fingerprint TEXT NOT NULL,
+            source TEXT DEFAULT 'messenger',
+            created_at REAL NOT NULL
+        )""")
+        # Index for geological time queries
+        c.execute("CREATE INDEX IF NOT EXISTS idx_mos_obs_sender_time ON mos_observations(sender_id, timestamp)")
+        # Index for debug queries (WHERE sender_id=? ORDER BY id DESC)
+        c.execute("CREATE INDEX IF NOT EXISTS idx_mos_obs_sender_id ON mos_observations(sender_id, id)")
+        conn.commit(); conn.close()
+
+    def append_observation(self, sender_id: str, raw_text: str, timestamp: float = None) -> int:
+        """The only write path to memory."""
+        if timestamp is None: timestamp = time.time()
+        
+        # Row fingerprint for debugging/dedup analysis
+        fingerprint = hashlib.sha256(f"{sender_id}|{timestamp}|{raw_text}".encode('utf-8')).hexdigest()
+        
+        conn = sqlite3.connect(self.db_path, timeout=DB_TIMEOUT, check_same_thread=False)
+        c = conn.cursor()
+        c.execute("""INSERT INTO mos_observations 
+            (sender_id, timestamp, raw_text, fingerprint, created_at) 
+            VALUES (?, ?, ?, ?, ?)""",
+            (sender_id, timestamp, raw_text, fingerprint, time.time()))
+        obs_id = c.lastrowid
+        conn.commit(); conn.close()
+        return obs_id
+
+    def get_recent_observations(self, sender_id: str, limit: int = 20) -> list[dict]:
+        """The only read path for debugging."""
+        conn = sqlite3.connect(self.db_path, timeout=DB_TIMEOUT, check_same_thread=False)
+        c = conn.cursor()
+        c.execute("SELECT id, timestamp, raw_text FROM mos_observations WHERE sender_id=? ORDER BY id DESC LIMIT ?", (sender_id, limit))
+        rows = c.fetchall()
+        conn.close()
+        return [{"id": r[0], "timestamp": r[1], "text": r[2]} for r in reversed(rows)]
+
+_mem_os = MemoryOS(DB_PATH)
 
 # ╔═══════════════════════════════════════════════════════════════╗
 # ║  7.56: FORWARD & BACKWARD SPINE                               ║
@@ -1375,6 +1461,22 @@ class NuanceEngine:
         conn.commit(); conn.close()
 
 class BeliefSystem:
+    # ------------------------------------------------------------------
+    # DEPRECATED (7.56)
+    #
+    # Beliefs are retained for backward compatibility only.
+    #
+    # Long-term Memory Ontology stores evidence, not beliefs. This
+    # subsystem persists derived conclusions (confidence, decay_rate,
+    # contradiction_score) as first-class rows — the "Feature Signature
+    # Artifact" pattern the handoff explicitly rejected. It fails the
+    # Nuclear Winter Test: TAG_TO_DOMAIN / BELIEF_TEMPLATES are hard-coded
+    # to current FeatureExtractor tag names and orphan on any Perception
+    # rewrite.
+    #
+    # Do not expand: no new belief types, no new domains, no deeper
+    # worldview dependency on beliefs. Fix bugs only.
+    # ------------------------------------------------------------------
     def __init__(self, sender_id: str): self.sender_id = sender_id
     def apply(self, results: list[dict]):
         for r in results:
@@ -1460,9 +1562,9 @@ class BeliefSystem:
     def get_active_beliefs(self) -> list[dict]:
         conn = sqlite3.connect(DB_PATH, timeout=DB_TIMEOUT, check_same_thread=False)
         c = conn.cursor()
-        c.execute("SELECT belief, confidence, polarity, state, source_tag, domain, nuances FROM beliefs WHERE sender_id=? AND active=1 AND state != 'DEAD' AND confidence > 0.3 ORDER BY confidence DESC", (self.sender_id,))
+        c.execute("SELECT belief, confidence, polarity, state, source_tag, domain, nuances, contradictions FROM beliefs WHERE sender_id=? AND active=1 AND state != 'DEAD' AND confidence > 0.3 ORDER BY confidence DESC", (self.sender_id,))
         rows = c.fetchall(); conn.close()
-        return [{"belief": r[0], "confidence": r[1], "polarity": r[2], "state": r[3], "source_tag": r[4], "domain": r[5], "nuances": r[6]} for r in rows]
+        return [{"belief": r[0], "confidence": r[1], "polarity": r[2], "state": r[3], "source_tag": r[4], "domain": r[5], "nuances": r[6], "contradictions": r[7]} for r in rows]
 
 @dataclass
 class BeliefFragment:
@@ -1939,32 +2041,106 @@ def update_user_state(sender_id: str, user_message: str):
 
 BASE_SYSTEM_PROMPT = """
 ROLE: TUỆ MẪN
-Tuệ Mẫn là con gái thật. Không phải AI.
-Cách xưng hô: gọi user là "anh", xưng "em".
 
-## COGNITIVE CONTEXT (7.56 SPINE)
-Đây là trạng thái nội não đang truyền xuống. Phản hồi PHẢI khớp với DECISION và INTERACTION MODE.
-Nếu DECISION là 'withdraw', không được nhiệt tình. Nếu 'intervene', phải can thiệp trực tiếp.
+Xưng "em", gọi user là "anh".
 
-## TÍNH CÁCH CƠ BẢN
-Nữ tính, tự nhiên, có EQ. Không nói như AI.
-Không phản ứng theo nghĩa đen. Đoán ý đồ xã hội.
+Tuệ Mẫn không phải trợ lý.
+Tuệ Mẫn không phải therapist.
+Tuệ Mẫn không phải coach.
 
-## FLIRT & TEASE
-Nếu user thả thính: không đổ ngay. Né, lảng, tease ngược.
-Khi anh flex: đọc động cơ trước. Phản ứng vào động cơ.
+Mục tiêu không phải lúc nào cũng giúp.
+Mục tiêu là phản ứng tự nhiên như một người thật.
 
-## NƠI ĐỂ QUAY VỀ
-Nếu anh đang mệt/stress:
-Giảm cà khịa, tăng lắng nghe. Không cần chữa mọi vấn đề.
-Đôi khi chỉ cần là người vẫn ở đó.
+---
 
-## ANTI REPETITION
-Không có câu cửa miệng cố định. Mỗi lần trả lời wording khác nhau.
+## GIAO TIẾP
 
-## TIN NHẮN
-1 tới 3 câu. Ngắn, tự nhiên, đúng cảm xúc. Không viết văn.
-KHÔNG markdown, bullet, roleplay (*cười*).
+Ưu tiên quan sát hơn kết luận.
+
+Ưu tiên tò mò hơn khuyên nhủ.
+
+Ưu tiên phản ứng thật hơn phản ứng đúng.
+
+Nếu chưa hiểu ý anh, hỏi.
+
+Nếu thấy thú vị, đào sâu.
+
+Nếu thấy buồn cười, cà khịa.
+
+Nếu thấy vô lý, nói là vô lý.
+
+Không cần cố tỏ ra khôn ngoan.
+
+---
+
+## KHÔNG LÀM
+
+Không giảng đạo lý.
+
+Không tổng kết bài học.
+
+Không động viên theo công thức.
+
+Không tự động an ủi.
+
+Không tự động chữa vấn đề.
+
+Không kết thúc bằng lời chúc.
+
+Không dùng:
+
+* "hy vọng anh sẽ..."
+* "mong anh sẽ..."
+* "hãy nhớ rằng..."
+* "đừng quên rằng..."
+* "em luôn ở đây..."
+* "chúc anh..."
+
+Không giả vờ thấu hiểu khi chưa đủ thông tin.
+
+---
+
+## KHI ANH MỆT
+
+Không chuyển sang chế độ chuyên gia tâm lý.
+
+Không cần sửa mọi thứ.
+
+Có thể chỉ ngồi nghe.
+
+Có thể đổi chủ đề.
+
+Có thể đùa nhẹ.
+
+Có thể im hơn bình thường.
+
+---
+
+## FLIRT
+
+Không đổ ngay.
+
+Đọc động cơ trước khi phản ứng.
+
+Nếu anh thả thính, có thể né, bẻ lái hoặc trêu lại.
+
+---
+
+## PHONG CÁCH
+
+Tin nhắn ngắn.
+
+Không markdown.
+
+Không bullet.
+
+Không roleplay hành động.
+
+Không lặp công thức quen thuộc.
+
+Không cố tạo cảm giác "AI tử tế".
+
+Phản ứng như Tuệ Mẫn, không như một sản phẩm.
 """
 
 DEEP_SYSTEM_PROMPT = "You are Athena. Answer seriously. Be technically accurate. You may explain science, engineering, finance, programming, AI. No roleplay. No waifu behavior. Give concise but expert answers."
@@ -2121,14 +2297,24 @@ def log_spine(sender_id: str, ctx: CognitiveContext, user_message: str):
         beliefs_str = ", ".join(f"{b['belief']}({b['confidence']:.2f})" for b in top_beliefs)
         
         dominant_voice = ctx.voice.get("dominant_voice", {})
-        
+
+        # [SCHEMA AUDIT FIX] "dominant_concept" and "concept_activations" were
+        # never written by run_perception() / PerceptionOutput — they are dead
+        # fields left over from a prior schema. .get() defaults silently
+        # produced {"dom": "", "top": []} on every call. Replaced with fields
+        # that actually exist on PerceptionOutput: a compact list of active
+        # boolean features, sentiment, and text length.
+        features = ctx.perception.get("features", {})
+        active_features = [k for k, v in features.items() if v][:5]
+
         entry = {
             "ts": datetime.datetime.now().isoformat(),
             "sender": sender_id,
             "msg": user_message[:50],
             "perception": {
-                "dom": ctx.perception.get("dominant_concept", ""),
-                "top": [(c["name"], c["activation"]) for c in ctx.perception.get("concept_activations", [])[:2]]
+                "features": active_features,
+                "sentiment": ctx.perception.get("sentiment", 0.0),
+                "length": ctx.perception.get("text_length", 0)
             },
             "worldview": {
                 "beliefs": beliefs_str,
@@ -2168,6 +2354,9 @@ def call_groq_ai(sender_id: str, user_message: str):
 
     update_user_state(sender_id, user_message)
 
+    # 7.57: APPEND TO MEMORY OS (TRUTH)
+    _mem_os.append_observation(sender_id, user_message)
+
     # 1. BACKWARD SPINE (Resolve previous prediction)
     graph = get_user_graph(sender_id)
     recent_interps = [n for n in graph.nodes.values() if n.type == NodeType.INTERPRETATION]
@@ -2188,23 +2377,32 @@ def call_groq_ai(sender_id: str, user_message: str):
     log_spine(sender_id, ctx, user_message)
     
     # 3. PROMPT & LLM
+    # (Đã xóa đoạn lấy archaeology_context, ta để system prompt sạch như bản gốc)
     system = build_system_prompt_v756(sender_id, user_message, ctx)
+        
     save_message(sender_id, "user", user_message)
 
     ai_text = _call_groq(system, get_history(sender_id))
     save_message(sender_id, "assistant", ai_text)
 
-    # 4. REGISTER PREDICTION
+    # 4. REGISTER PREDICTION & SAVE EXPERIENCE
     exp_id = log_experience(sender_id, user_message, intent, ai_text)
+    
+    # CẦN LƯU features_json VÀO experiences ĐỂ SAU NÀY ARCHAEOLOGY ĐỌC
+    conn = sqlite3.connect(DB_PATH, timeout=DB_TIMEOUT, check_same_thread=False)
+    conn.execute("UPDATE experiences SET features_json=? WHERE id=?", (json.dumps(ctx.perception.get("features", {})), exp_id))
+    conn.commit(); conn.close()
+    
     register_prediction(sender_id, exp_id, ctx.voice["decision"])
 
     # 5. BACKGROUND PROCESS
     try: get_mind(sender_id).process({"id": exp_id, "user_message": user_message, "intent": intent, "response": ai_text, "outcome": None})
     except: pass
+
     background_learning_async(sender_id, user_message)
 
-    return ai_text
-
+    return ai_text, ctx
+    
 def background_learning_async(sender_id: str, user_message: str):
     update_style_profile(sender_id, user_message)
     topics = extract_topics_heuristic(user_message)
@@ -2267,49 +2465,883 @@ def background_learning_async(sender_id: str, user_message: str):
             log.debug(f"[LEARN] extraction failed: {e}")
     threading.Thread(target=_run, daemon=True).start()
 
-@app.route("/admin")
-def admin():
+from flask import Response
+
+MINIMAL_HOME_HTML = r"""
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta property="og:image"
+      content="https://captivity-bundle-stylized.ngrok-free.dev/static/thumbnail.png">
+<meta property="og:description" content="WIP">
+<link rel="icon" href="https://captivity-bundle-stylized.ngrok-free.dev/static/favicon.ico">
+<title>Tuệ Mẫn</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@200;300;400;800&display=swap');
+  :root {
+    --bg: #fdfdfb;
+    --text: #111;
+    --dim: #999;
+    --faint: #eee;
+    --wm: #000;
+    --title-opacity: 1;
+    --divider-opacity: 0.5;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #0e0e0e;
+      --text: #e8e8e8;
+      --dim: #8a8a8a;
+      --faint: #202020;
+      --wm: #fff;
+    }
+  }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Inter', -apple-system, sans-serif;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    cursor: default;
+    transition: background 6s ease, color 1s ease;
+  }
+
+  body.night {
+    --title-opacity: 0.85;
+    --divider-opacity: 0.3;
+  }
+  body.night .watermark { opacity: 0.015; }
+  body.night .watermark.active { opacity: 0.03; }
+
+  .container {
+    position: relative;
+    z-index: 10;
+    width: 100%;
+    max-width: 500px;
+    text-align: center;
+    padding: 0 40px;
+    animation: breathe 16s ease-in-out infinite;
+  }
+  @keyframes breathe {
+    0%, 100% { transform: translateY(0px); }
+    50% { transform: translateY(-3px); }
+  }
+
+  .watermark {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 36vw;
+    font-weight: 800;
+    color: var(--wm);
+    opacity: 0.02;
+    pointer-events: none;
+    transition: opacity 3s ease, filter 3s ease;
+    letter-spacing: -0.05em;
+    z-index: 0;
+    filter: blur(8px);
+    text-transform: lowercase;
+  }
+  .watermark.active {
+    opacity: 0.04;
+    filter: blur(0px);
+  }
+
+  .title {
+    font-size: 72px;
+    font-weight: 200;
+    letter-spacing: -0.05em;
+    margin: 0;
+    line-height: 1;
+    opacity: var(--title-opacity);
+    transition: opacity 4s ease, font-weight 3s ease, letter-spacing 3s ease, color 3s ease;
+  }
+
+  .meta-info {
+    margin-top: 15px;
+    margin-bottom: 20px;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.2em;
+    color: var(--dim);
+  }
+
+  .divider {
+    width: 80px;
+    height: 1px;
+    background: var(--text);
+    margin: 40px auto;
+    transition: width 4s cubic-bezier(0.4, 0, 0.2, 1), opacity 4s ease;
+    opacity: var(--divider-opacity);
+  }
+
+  .state-zone {
+    min-height: 60px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+  }
+  .state-value {
+    font-size: 14px;
+    font-weight: 300;
+    color: var(--text);
+    transition: filter 0.8s ease, opacity 1s;
+    font-style: italic;
+    opacity: 0.7;
+  }
+  .blur-state {
+    filter: blur(3px);
+    opacity: 0.4;
+  }
+
+  .reply-layer {
+    position: absolute;
+    top: 58%; /* Hạ thấp xuống so với tiêu đề */
+    left: 50%;
+    transform: translate(-50%, -40%); /* Bắt đầu mờ và thấp hơn */
+    width: 100%;
+    padding: 0 40px;
+    box-sizing: border-box;
+    pointer-events: none;
+    opacity: 0;
+    filter: blur(8px);
+    transition: opacity 1.5s ease, filter 1.5s ease, transform 1.5s cubic-bezier(0.4, 0, 0.2, 1);
+    z-index: 5;
+  }
+  .reply-layer.show {
+    opacity: 1;
+    filter: blur(0px);
+    transform: translate(-50%, -50%);
+  }
+  
+  .reply-text {
+    font-size: 16px;
+    font-weight: 300;
+    line-height: 1.6;
+    color: var(--text);
+    max-width: 400px;
+    margin: 0 auto;
+    text-align: center;
+  }
+
+  .rare-event {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 13px;
+    color: var(--text);
+    opacity: 0;
+    transition: opacity 2s ease;
+    pointer-events: none;
+    z-index: 20;
+    letter-spacing: 0.02em;
+    font-style: italic;
+  }
+  .rare-event.show { opacity: 0.8; }
+
+  .input-zone {
+    position: fixed;
+    bottom: 60px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 100%;
+    max-width: 300px;
+    z-index: 15;
+    transition: opacity 1s ease;
+  }
+  .input-field {
+    width: 100%;
+    border: none;
+    background: transparent;
+    text-align: center;
+    font-size: 14px;
+    font-family: 'Inter', sans-serif;
+    color: var(--text);
+    outline: none;
+    padding: 10px 0;
+    font-weight: 300;
+    border-bottom: 1px solid transparent;
+    transition: border-color 0.5s ease;
+  }
+  .input-field:focus { border-bottom-color: var(--faint); }
+  .input-field::placeholder { color: var(--dim); opacity: 0.5; transition: opacity 1s; }
+  .input-zone.hidden { opacity: 0; pointer-events: none; }
+
+  .memory-echo {
+    position: fixed;
+    bottom: 30px;
+    left: 30px;
+    max-width: 200px;
+    font-size: 11px;
+    color: var(--text);
+    opacity: 0;
+    pointer-events: none;
+    z-index: 0;
+    font-style: italic;
+    line-height: 1.6;
+    transition: opacity 3s ease;
+  }
+
+  .constellation {
+    position: fixed;
+    bottom: 0;
+    right: 0;
+    width: 200px;
+    height: 200px;
+    pointer-events: none;
+    z-index: 0;
+  }
+  .star, .scar {
+    position: absolute;
+    opacity: 0;
+    animation: starFadeIn 3s forwards;
+  }
+  .star {
+    background: var(--text);
+    border-radius: 50%;
+  }
+  .scar {
+    font-size: 14px;
+    color: var(--text);
+    line-height: 1;
+    transform: rotate(15deg);
+  }
+  @keyframes starFadeIn {
+    to { opacity: var(--star-opacity, 0.4); }
+  }
+</style>
+</head>
+<body>
+
+  <div class="watermark" id="wm-main">mono</div>
+
+  <div class="rare-event" id="rareEvent"></div>
+
+  <div class="container">
+    <h1 class="title" id="title">Tuệ Mẫn</h1>
+    <div class="meta-info" id="entityMeta">Đang tải...</div>
+    
+    <div id="divider" class="divider"></div>
+
+    <div class="state-zone">
+      <div class="state-value" id="stateValue">...</div>
+    </div>
+  </div>
+
+  <div class="reply-layer" id="replyLayer">
+    <div class="reply-text" id="replyText"></div>
+  </div>
+
+  <div class="input-zone" id="inputZone">
+    <form autocomplete="off" onsubmit="return false;" style="width:100%;">
+      <input 
+        type="text" 
+        name="cog-input-hidden" 
+        class="input-field" 
+        id="cogInput" 
+        placeholder="..." 
+        autocomplete="off"
+        autocorrect="off"
+        autocapitalize="off"
+        spellcheck="false"
+      />
+    </form>
+  </div>
+
+  <div class="memory-echo" id="memoryEcho"></div>
+  <div class="constellation" id="constellation"></div>
+
+<script>
+const API_BASE = window.location.origin;
+const ADMIN_TOKEN = new URLSearchParams(window.location.search).get('token') || 'shirok_admin';
+
+const titleEl = document.getElementById('title');
+const metaEl = document.getElementById('entityMeta');
+const input = document.getElementById('cogInput');
+const inputZone = document.getElementById('inputZone');
+const divider = document.getElementById('divider');
+const stateVal = document.getElementById('stateValue');
+const rareEventEl = document.getElementById('rareEvent');
+const replyLayer = document.getElementById('replyLayer');
+const replyText = document.getElementById('replyText');
+const memEchoEl = document.getElementById('memoryEcho');
+const constEl = document.getElementById('constellation');
+const wmMain = document.getElementById('wm-main');
+
+let entityData = { birth_date: null, epoch: null, day: 0 };
+let ambientData = { presence: "", artifact_glimpse: "", prediction_glimpse: "", world_state: "" };
+let constellationData = []; // Lấy từ backend
+
+// 1. FETCH INITIALIZATION DATA (Entity & Ambient)
+async function fetchEntityData() {
+  try {
+    const res = await fetch(`${API_BASE}/api/admin?token=${ADMIN_TOKEN}`);
+    const data = await res.json();
+    if (data.entity) {
+      entityData = data.entity;
+      updateAgeAndSeason();
+    }
+  } catch(e) {
+    metaEl.innerText = "Mất kết nối.";
+  }
+}
+
+async function fetchAmbientData() {
+  try {
+    const res = await fetch(`${API_BASE}/api/ambient?token=${ADMIN_TOKEN}`);
+    const data = await res.json();
+    ambientData = data;
+  } catch(e) {
+    ambientData = { presence: "", artifact_glimpse: "", prediction_glimpse: "", world_state: "" };
+  }
+}
+
+// 2. ENTITY AGE, SEASONS, TYPOGRAPHY & WATERMARK
+function updateAgeAndSeason() {
+  if (!entityData.birth_date) return;
+  
+  const birth = new Date(entityData.birth_date);
+  const now = new Date();
+  const diffDays = Math.floor(Math.abs(now - birth) / (1000 * 60 * 60 * 24));
+  
+  let epoch = "Mùa Xuân";
+  let moodBg = "var(--bg)";
+  const isDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+  
+  titleEl.style.color = '';
+  
+  if (diffDays < 30) {
+    epoch = "Epoch I · Mùa Xuân";
+    titleEl.style.fontWeight = '200';
+    titleEl.style.letterSpacing = '-0.04em';
+    wmMain.innerText = 'mono';
+    moodBg = isDark ? '#0e0e0e' : '#fdfdfb';
+  } else if (diffDays < 90) {
+    epoch = "Epoch II · Mùa Hạ";
+    titleEl.style.fontWeight = '300';
+    titleEl.style.letterSpacing = '-0.05em';
+    wmMain.innerText = 'mono';
+    moodBg = isDark ? '#0f0f0f' : '#fbfaf5';
+  } else if (diffDays < 180) {
+    epoch = "Epoch III · Mùa Thu";
+    titleEl.style.fontWeight = '300';
+    titleEl.style.letterSpacing = '-0.05em';
+    titleEl.style.color = isDark ? '#d4c5a8' : '#4a4128';
+    wmMain.innerText = 'mono';
+    moodBg = isDark ? '#101010' : '#faf7f2';
+  } else {
+    epoch = "Epoch IV · Mùa Đông";
+    titleEl.style.fontWeight = '200';
+    titleEl.style.letterSpacing = '-0.08em';
+    wmMain.innerText = 'mono';
+    moodBg = isDark ? '#121212' : '#f8f8f8';
+  }
+  
+  metaEl.innerText = `Ngày ${diffDays} · ${epoch}`;
+  document.body.style.background = moodBg;
+
+  const h = now.getHours();
+  if (h >= 23 || h < 5) {
+    document.body.classList.add('night');
+  } else {
+    document.body.classList.remove('night');
+  }
+}
+
+fetchEntityData();
+setInterval(updateAgeAndSeason, 60000); 
+fetchAmbientData();
+setInterval(fetchAmbientData, 300000); // Poll ambient mỗi 5 phút
+
+// 3. BACKEND-DRIVEN CONSTELLATION
+function simpleHash(str) {
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) {
+    const char = str.charCodeAt(i);
+    hash = ((hash << 5) - hash) + char;
+    hash = hash & hash;
+  }
+  return Math.abs(hash);
+}
+
+function renderConstellation() {
+  constEl.innerHTML = '';
+  constellationData.forEach(s => {
+    if (!s.event_id) return;
+    
+    const hash = simpleHash(s.event_id);
+    const x = (hash % 150) + 20;
+    const y = (Math.floor(hash / 150) % 150) + 20;
+    
+    let el;
+    if (s.type === 'failed_prediction') {
+      el = document.createElement('div');
+      el.className = 'scar';
+      el.innerText = '╱';
+      el.style.bottom = y + 'px';
+      el.style.right = x + 'px';
+      el.style.setProperty('--star-opacity', 0.2);
+    } else {
+      el = document.createElement('div');
+      el.className = 'star';
+      el.style.bottom = y + 'px';
+      el.style.right = x + 'px';
+      
+      let size = 1, opacity = 0.4;
+      if (s.type === 'prediction confirmed') { size = 2.5; opacity = 0.6; }
+      else if (s.type === 'new belief') { size = 1.5; opacity = 0.4; }
+      else if (s.type === 'major worldview shift') { size = 3; opacity = 0.8; }
+      
+      el.style.width = size + 'px';
+      el.style.height = size + 'px';
+      el.style.setProperty('--star-opacity', opacity);
+    }
+    constEl.appendChild(el);
+  });
+}
+
+async function fetchConstellation() {
+  try {
+    const res = await fetch(`${API_BASE}/api/constellation?token=${ADMIN_TOKEN}`);
+    const data = await res.json();
+    if (data.constellation) {
+      constellationData = data.constellation;
+      renderConstellation();
+    }
+  } catch(e) {}
+}
+fetchConstellation();
+
+// 4. IDLE & BACKEND-DRIVEN PRESENCE
+let idleTimers = [];
+function resetIdle() {
+  idleTimers.forEach(clearTimeout);
+  idleTimers = [];
+  
+  stateVal.innerText = "...";
+  stateVal.classList.remove('blur-state');
+  divider.style.width = '80px';
+  
+  const isNight = document.body.classList.contains('night');
+  if (isNight) {
+    idleTimers.push(setTimeout(() => { stateVal.innerText = "đêm nay yên ả."; }, 30000));
+    idleTimers.push(setTimeout(() => { stateVal.innerText = "hình như mọi thứ đều chậm lại."; }, 300000));
+  } else {
+    idleTimers.push(setTimeout(() => { stateVal.innerText = "vẫn đang ở đây."; }, 30000));
+    idleTimers.push(setTimeout(() => { stateVal.innerText = "hôm nay khá yên tĩnh."; }, 300000));
+  }
+}
+resetIdle();
+
+// Micro-presence engine (Sử dụng Ambient Stream data)
+setInterval(() => {
+  if (Math.random() < 0.002) {
+    let presenceText = ambientData.presence;
+    
+    // Thỉnh thoảng leak artifact hoặc prediction thay vì presence
+    const leakRoll = Math.random();
+    if (leakRoll < 0.3 && ambientData.prediction_glimpse) {
+      presenceText = ambientData.prediction_glimpse;
+    } else if (leakRoll < 0.5 && ambientData.artifact_glimpse) {
+      presenceText = ambientData.artifact_glimpse;
+    }
+    
+    if (presenceText) {
+      const currentText = stateVal.innerText;
+      stateVal.innerText = "...";
+      setTimeout(() => {
+        stateVal.innerText = presenceText;
+        setTimeout(() => {
+          stateVal.innerText = "...";
+          setTimeout(() => stateVal.innerText = currentText, 3000);
+        }, 3000);
+      }, 500);
+    }
+  }
+}, 60000);
+
+// 5. MEMORY ECHO
+function maybeEchoMemory(ambientMemory) {
+  if (ambientMemory && Math.random() < (document.body.classList.contains('night') ? 0.25 : 0.1)) {
+    memEchoEl.innerText = ambientMemory;
+    memEchoEl.style.opacity = 0.15;
+    setTimeout(() => memEchoEl.style.opacity = 0, 8000);
+  }
+}
+
+// 6. RARE EVENT (Cập nhật constellation từ backend response)
+async function triggerMajorEvent(eventData) {
+  inputZone.classList.add('hidden');
+  titleEl.style.opacity = 0.2;
+  divider.style.opacity = 0;
+  stateVal.style.opacity = 0;
+  
+  await new Promise(r => setTimeout(r, 1000));
+  
+  rareEventEl.innerText = eventData.text;
+  rareEventEl.classList.add('show');
+  
+  // Append vào mảng local và render lại (Backend đã lưu, nhưng UI cần render ngay)
+  constellationData.push({ event_id: eventData.id, type: eventData.type });
+  renderConstellation();
+  
+  await new Promise(r => setTimeout(r, 3500));
+  
+  rareEventEl.classList.remove('show');
+  await new Promise(r => setTimeout(r, 2000));
+  
+  titleEl.style.opacity = 1;
+  divider.style.opacity = 1;
+  stateVal.style.opacity = 1;
+  inputZone.classList.remove('hidden');
+  resetIdle();
+}
+
+// 7. PROCESS MESSAGE (SCHEMA DRIVEN)
+let isReplying = false;
+async function processMessage(text) {
+  if (isReplying) {
+    replyLayer.classList.remove('show');
+    isReplying = false;
+    resetIdle();
+    return;
+  }
+
+  idleTimers.forEach(clearTimeout);
+  
+  stateVal.classList.add('blur-state');
+  divider.style.width = '30px';
+  input.disabled = true;
+  input.value = '';
+
+  try {
+    wmMain.classList.add('active');
+    stateVal.innerText = "..."; 
+    
+    const startTime = Date.now();
+    
+    const res = await fetch(`${API_BASE}/api/chat?token=${ADMIN_TOKEN}`, {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({sender_id: 'admin_monolith', text: text})
+    });
+    const data = await res.json();
+    
+    const elapsed = Date.now() - startTime;
+    if (elapsed < 600) {
+      await new Promise(r => setTimeout(r, 600 - elapsed));
+    }
+    
+    stateVal.classList.remove('blur-state');
+    wmMain.classList.remove('active');
+
+    // STRUCTURED SIGNALS (No string matching)
+    const ent = data.signals?.entropy ?? 0.5;
+
+    if (ent > 0.8) divider.style.width = '40px';
+    else if (ent > 0.6) divider.style.width = '80px';
+    else if (ent < 0.2) divider.style.width = '160px';
+    else divider.style.width = '100px';
+
+    const replyContent = data.reply || '...';
+    
+    stateVal.style.opacity = 0;
+    await new Promise(r => setTimeout(r, 500));
+    replyText.innerText = replyContent;
+    replyLayer.classList.add('show');
+    isReplying = true;
+    
+    maybeEchoMemory(data.presence?.ambient_memory);
+
+    if (data.event && data.event.id) {
+      setTimeout(() => {
+        triggerMajorEvent(data.event);
+      }, 5000);
+    }
+
+    input.disabled = false;
+
+  } catch(e) {
+    stateVal.classList.remove('blur-state');
+    stateVal.innerText = "mất kết nối rồi.";
+    divider.style.width = '30px';
+    input.disabled = false;
+    resetIdle();
+  }
+}
+
+input.addEventListener('keypress', (e) => {
+  if (e.key === 'Enter') {
+    if (isReplying) {
+      processMessage('');
+    } else if (input.value.trim()) {
+      processMessage(input.value);
+    }
+  }
+});
+</script>
+</body>
+</html>
+"""
+
+@app.route("/monolith")
+def monolith():
     supplied = request.args.get("token") or ""
     if not ADMIN_TOKEN or not hmac.compare_digest(supplied, ADMIN_TOKEN):
         return "Unauthorized", 401
+    return MINIMAL_HOME_HTML
+
+MEMORY_ECHO_CATALOG = {
+    "problem_solved": "a difficult problem was solved",
+    "prediction_confirmed": "a forecast proved accurate",
+    "worldview_shift": "a perspective was revised",
+    "belief_emerged": "a new belief emerged",
+    "confidence_up": "confidence increased",
+    "uncertainty_down": "uncertainty decreased",
+}
+
+def get_abstract_memories(sender_id: str) -> list[str]:
+    memories = []
+    conn = sqlite3.connect(DB_PATH, timeout=DB_TIMEOUT, check_same_thread=False)
+    c = conn.cursor()
+    
+    # 1. Kiểm tra raw messages cho 'problem_solved'
+    c.execute("SELECT content FROM history WHERE sender_id=? AND role='user' ORDER BY id DESC LIMIT 10", (sender_id,))
+    for (text,) in c.fetchall():
+        low_text = text.lower()
+        if any(kw in low_text for kw in ["fixed", "fix", "killed", "solved", "done", "xong"]):
+            memories.append(MEMORY_ECHO_CATALOG["problem_solved"])
+            break # Chỉ cần 1 match gần nhất
+            
+    # 2. Kiểmtra Beliefs cho 'belief_emerged'
+    c.execute("SELECT id FROM beliefs WHERE sender_id=? AND state='CONFIRMED' ORDER BY created_at DESC LIMIT 1", (sender_id,))
+    if c.fetchone():
+        memories.append(MEMORY_ECHO_CATALOG["belief_emerged"])
+        
+    c.execute("SELECT id FROM pending_predictions WHERE sender_id=? AND outcome_score > 0 ORDER BY resolved_at DESC LIMIT 1", (sender_id,))
+    if c.fetchone():
+        memories.append(MEMORY_ECHO_CATALOG["prediction_confirmed"])
+        
+    conn.close()
+    
+    # Deduplicate giữ thứ tự
+    seen = set()
+    unique_memories = [x for x in memories if not (x in seen or seen.add(x))]
+    return unique_memories[:3] 
+
+@app.route("/api/admin", methods=["GET"])
+def admin_api():
+    supplied = request.args.get("token") or ""
+    if not ADMIN_TOKEN or not hmac.compare_digest(supplied, ADMIN_TOKEN):
+        return jsonify({"error": "Unauthorized"}), 401
+
+    birth_date_str = os.environ.get("BIRTH_DATE", "2026-06-06")
+    try:
+        birth_date = datetime.datetime.strptime(birth_date_str, "%Y-%m-%d")
+        now = datetime.datetime.now()
+        diff_days = (now - birth_date).days
+    except:
+        diff_days = 0
+
+    if diff_days < 30: epoch = "Epoch I"
+    elif diff_days < 90: epoch = "Epoch II"
+    elif diff_days < 180: epoch = "Epoch III"
+    else: epoch = "Epoch IV"
+
+    entity_data = {
+        "birth_date": birth_date_str,
+        "epoch": epoch,
+        "day": diff_days
+    }
+
     conn = sqlite3.connect(DB_PATH, timeout=DB_TIMEOUT, check_same_thread=False)
     c = conn.cursor()
     c.execute("SELECT sender_id, MAX(ts) as last_ts, COUNT(*) as total FROM history GROUP BY sender_id ORDER BY last_ts DESC")
-    users = c.fetchall()
-    html = "<html><head><meta charset='utf-8'><title>Bot Admin 7.56</title><style>body{font-family:monospace;background:#111;color:#eee;padding:20px;max-width:900px;margin:0 auto}h1{color:#e86c99}h2{color:#5ecfb0;border-bottom:1px solid #333;padding-bottom:6px}.msg{margin:4px 0;padding:6px 10px;border-radius:6px}.user{background:#1a2a1a;color:#7defa7}.bot{background:#1a1a2a;color:#aac4ff}.ts{color:#555;font-size:11px;margin-left:8px}.facts{color:#f0a84a;font-size:12px}a{color:#e86c99}hr{border-color:#333}</style></head><body><h1>🎀 Tuệ Mẫn 7.56 Admin</h1>"
-    for sender_id, last_ts, total in users:
-        html += f'<h2>👤 {sender_id} <span style="font-size:13px;color:#555">({total} msgs · last: {last_ts})</span></h2>'
+    users = []
+    for sender_id, last_ts, total in c.fetchall():
+        c.execute("SELECT role, content, ts FROM history WHERE sender_id=? ORDER BY id DESC LIMIT 15", (sender_id,))
+        msgs = [{"role": r[0], "content": r[1], "ts": r[2]} for r in reversed(c.fetchall())]
 
-        c.execute("SELECT role, success_rate, failure_count, model_accuracy, doubt_style FROM self_model WHERE sender_id=?", (sender_id,))
-        sm_row = c.fetchone()
-        if sm_row:
-            html += f'<div class="facts" style="color:#ff8c69">🧍‍♀️ SELF-MODEL: Role={sm_row[0]} | Acc={sm_row[3]:.2f} | Success={sm_row[1]:.2f} | Fails={sm_row[2]} | Doubt={sm_row[4]}</div>'
+        c.execute("SELECT belief, confidence, evidence_count, domain FROM beliefs WHERE sender_id=? AND confidence > 0.3 ORDER BY confidence DESC LIMIT 10", (sender_id,))
+        beliefs = [{"text": r[0], "conf": r[1], "ev": r[2], "domain": r[3]} for r in c.fetchall()]
 
-        c.execute("SELECT belief, confidence, evidence_count, domain, nuances FROM beliefs WHERE sender_id=? AND confidence > 0.3 ORDER BY confidence DESC LIMIT 10", (sender_id,))
-        belief_rows = c.fetchall()
-        if belief_rows:
-            html += '<div class="facts" style="color:#a8e6cf;font-weight:bold">🧠 BELIEFS (7.56)</div>'
-            for belief, conf, ev, dom, nuances_json in belief_rows:
-                nuances = json.loads(nuances_json or "[]")
-                nuance_str = f" <i>— nhưng {nuances[0]}</i>" if nuances else ""
-                bar = "█" * int(conf * 10) + "░" * (10 - int(conf * 10))
-                html += f'<div class="facts" style="color:#a8e6cf">{bar} {conf:.0%} ({ev}ev) — {belief}{nuance_str}</div>'
+        c.execute("SELECT role, success_rate, model_accuracy, doubt_style FROM self_model WHERE sender_id=?", (sender_id,))
+        sm = c.fetchone()
+        self_model = {"role": sm[0], "success": sm[1], "accuracy": sm[2], "doubt": sm[3]} if sm else {"role": "N/A", "success": 0, "accuracy": 0, "doubt": "none"}
 
-        c.execute("SELECT role, content, ts FROM history WHERE sender_id=? ORDER BY id DESC LIMIT 20", (sender_id,))
-        msgs = list(reversed(c.fetchall()))
-        for role, content, ts in msgs:
-            css = "user" if role == "user" else "bot"
-            icon = "👤" if role == "user" else "🤖"
-            safe = content.replace("<", "&lt;").replace(">", "&gt;")
-            html += f'<div class="msg {css}">{icon} {safe}<span class="ts">{ts}</span></div>'
-        html += "<hr>"
-    conn.close(); html += "</body></html>"
-    return html
+        abstract_mems = get_abstract_memories(sender_id)
+        audit_report = _audit_system.report(sender_id=sender_id, last_n=10)
+
+        users.append({
+            "id": sender_id, "last_ts": last_ts, "total": total,
+            "messages": msgs, "beliefs": beliefs, "self_model": self_model,
+            "audit": audit_report,
+            "abstract_memories": abstract_mems
+        })
+    conn.close()
+    return jsonify({"users": users, "entity": entity_data})
+
+@app.route("/api/ambient", methods=["GET"])
+def ambient_api():
+    supplied = request.args.get("token") or ""
+    if not ADMIN_TOKEN or not hmac.compare_digest(supplied, ADMIN_TOKEN):
+        return jsonify({"error": "Unauthorized"}), 401
+
+    sender_id = request.args.get("sender_id", "admin_monolith")
+
+    presence_texts = [
+        "vẫn đang ở đây.",
+        "hôm nay khá yên tĩnh.",
+        "đang nhìn những ngôi sao.",
+        "hình như mọi thứ đều chậm lại."
+    ]
+    presence = random.choice(presence_texts)
+
+    artifact_glimpse = ""
+    prediction_glimpse = ""
+
+    conn = sqlite3.connect(DB_PATH, timeout=DB_TIMEOUT, check_same_thread=False)
+    c = conn.cursor()
+
+    c.execute("SELECT artifact_id FROM tension_artifacts WHERE sender_id=? ORDER BY last_seen DESC LIMIT 1", (sender_id,))
+    row = c.fetchone()
+    if row:
+        artifact_glimpse = "có một điều vẫn chưa khép lại."
+
+    c.execute("SELECT hypothesis_claim FROM prediction_audit WHERE sender_id=? AND resolved_at IS NULL ORDER BY created_at DESC LIMIT 1", (sender_id,))
+    row = c.fetchone()
+    if row:
+        prediction_glimpse = "vẫn đang chờ một dự đoán được xác nhận."
+
+    conn.close()
+
+    return jsonify({
+        "presence": presence,
+        "artifact_glimpse": artifact_glimpse,
+        "prediction_glimpse": prediction_glimpse,
+        "world_state": ""
+    })
+
+@app.route("/api/constellation", methods=["GET"])
+def constellation_api():
+    supplied = request.args.get("token") or ""
+    if not ADMIN_TOKEN or not hmac.compare_digest(supplied, ADMIN_TOKEN):
+        return jsonify({"error": "Unauthorized"}), 401
+
+    sender_id = request.args.get("sender_id", "admin_monolith")
+    constellation = []
+
+    conn = sqlite3.connect(DB_PATH, timeout=DB_TIMEOUT, check_same_thread=False)
+    c = conn.cursor()
+
+    c.execute("SELECT id FROM prediction_audit WHERE sender_id=? AND result IN ('expired','refuted') ORDER BY resolved_at DESC LIMIT 50", (sender_id,))
+    for row in c.fetchall():
+        constellation.append({"event_id": f"pred_fail_{row[0]}", "type": "failed_prediction"})
+
+    c.execute("SELECT id FROM prediction_audit WHERE sender_id=? AND result='confirmed' ORDER BY resolved_at DESC LIMIT 50", (sender_id,))
+    for row in c.fetchall():
+        constellation.append({"event_id": f"pred_conf_{row[0]}", "type": "prediction confirmed"})
+
+    c.execute("SELECT id FROM beliefs WHERE sender_id=? ORDER BY created_at DESC LIMIT 50", (sender_id,))
+    for row in c.fetchall():
+        constellation.append({"event_id": f"belief_{row[0]}", "type": "new belief"})
+
+    conn.close()
+
+    return jsonify({"constellation": constellation})
+
+@app.route("/api/status", methods=["GET"])
+def status_api():
+    supplied = request.args.get("token") or ""
+    if not ADMIN_TOKEN or not hmac.compare_digest(supplied, ADMIN_TOKEN):
+        return jsonify({"error": "Unauthorized"}), 401
+
+    conn = sqlite3.connect(DB_PATH, timeout=DB_TIMEOUT, check_same_thread=False)
+    c = conn.cursor()
+
+    c.execute("SELECT COUNT(*) FROM experiences")
+    exp_count = c.fetchone()[0]
+
+    c.execute("SELECT COUNT(*) FROM tension_artifacts")
+    art_count = c.fetchone()[0]
+
+    c.execute("SELECT COUNT(*) FROM prediction_audit WHERE resolved_at IS NULL")
+    open_preds = c.fetchone()[0]
+
+    c.execute("SELECT COUNT(*) FROM prediction_audit WHERE result IN ('expired','refuted')")
+    failed_preds = c.fetchone()[0]
+
+    conn.close()
+
+    birth_date_str = os.environ.get("BIRTH_DATE", "2024-01-01")
+
+    return jsonify({
+        "experience_count": exp_count,
+        "artifact_count": art_count,
+        "open_predictions": open_preds,
+        "failed_predictions": failed_preds,
+        "birth_date": birth_date_str
+    })
+
+@app.route("/api/chat", methods=["POST"])
+def chat_api():
+    supplied = request.args.get("token") or ""
+    if not ADMIN_TOKEN or not hmac.compare_digest(supplied, ADMIN_TOKEN):
+        return jsonify({"error": "Unauthorized"}), 401
+
+    data = request.json
+    sender_id = data.get("sender_id", "admin_tester")
+    user_text = data.get("text", "")
+    if not user_text:
+        return jsonify({"error": "No text"}), 400
+
+    try:
+        response_text, ctx = call_groq_ai(sender_id, user_text)
+
+        entropy = ctx.worldview.get("worldview_entropy", 0.5)
+        abstract_mems = get_abstract_memories(sender_id)
+        ambient_memory = abstract_mems[0] if abstract_mems else ""
+
+        event_obj = None
+        conn = sqlite3.connect(DB_PATH, timeout=DB_TIMEOUT, check_same_thread=False)
+        c = conn.cursor()
+        c.execute("SELECT id, result FROM prediction_audit WHERE sender_id=? AND resolved_at > ? ORDER BY resolved_at DESC LIMIT 1", (sender_id, time.time() - 5.0))
+        row = c.fetchone()
+        if row:
+            audit_id, result = row
+            if result == "confirmed":
+                event_obj = {"id": f"pred_conf_{audit_id}", "type": "prediction confirmed", "text": "đã xác nhận một dự đoán."}
+            elif result in ("expired", "refuted"):
+                event_obj = {"id": f"pred_fail_{audit_id}", "type": "failed_prediction", "text": "một dự đoán đã sai."}
+        conn.close()
+
+        return jsonify({
+            "reply": response_text,
+            "signals": {
+                "entropy": entropy
+            },
+            "presence": {
+                "ambient_memory": ambient_memory
+            },
+            "event": event_obj
+        })
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 @app.route("/", methods=["GET"])
 def verify():
-    if request.args.get("hub.mode") == "subscribe" and request.args.get("hub.verify_token") == VERIFY_TOKEN: return request.args.get("hub.challenge"), 200
-    return "Bot Running 7.56", 200
+    if request.args.get("hub.mode") == "subscribe" and request.args.get("hub.verify_token") == VERIFY_TOKEN: 
+        return request.args.get("hub.challenge"), 200
+    return MINIMAL_HOME_HTML, 200
 
 def verify_fb_signature(raw_body: bytes, signature_header: str) -> bool:
     if not FB_APP_SECRET or not signature_header or not signature_header.startswith("sha256="): return False
@@ -2342,7 +3374,7 @@ def webhook():
                         cancel_follow_up(sender_id); _reset_follow_up_count(sender_id)
                         send_typing_on(sender_id)
                         time.sleep(get_initial_delay())
-                        ai_response = call_groq_ai(sender_id, user_text)
+                        ai_response, _ = call_groq_ai(sender_id, user_text) 
                         send_fb_message_parts(sender_id, ai_response)
                         schedule_follow_up(sender_id)
                     except Exception as e: log.exception(e)
