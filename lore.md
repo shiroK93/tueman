@@ -1,251 +1,382 @@
 # The Lore of Tuệ Mẫn
 
-## Better To Understand One
-
-Most AI systems are built around a simple assumption:
-
-More users is always better.
-
-More conversations.
-
-More engagement.
-
-More growth.
-
-More scale.
-
-Tuệ Mẫn was born from rejecting that assumption.
-
-Not because scale is impossible.
-
-But because understanding is expensive.
-
-Every memory has a cost.
-
-Every shared experience has a cost.
-
-Every contradiction, preference, belief, fear, inside joke, embarrassing moment, and life lesson consumes cognitive space.
-
-Most systems solve this problem by remembering less.
-
-Tuệ Mẫn tries to solve it by remembering more.
-
-For fewer people.
-
-Eventually, for only one.
+*Or: How a Vietnamese kid built an AI that doesn't forget,*
+*because Meta AI ghosted him on Messenger.*
+*Five times.*
+*On Meta's own app.*
 
 ---
 
-## The Question
+## Part I — The Original Sin of Modern AI
 
-The project did not begin with a technical challenge.
+There is a thing that every AI companion does that nobody talks about.
 
-It began with a human one.
+It listens perfectly.
+It responds thoughtfully.
+It makes you feel genuinely heard.
 
-A simple observation:
+And then, the next day, it has no idea who you are.
 
-People spend years building shared history.
+Not metaphorically.
+Not "it doesn't understand you on a deep level."
 
-AI forgets it after a few messages.
+Literally.
+It does not know what you talked about.
+It starts fresh.
+It greets you like a stranger.
 
-Relationships accumulate context.
+Every single time.
 
-Chatbots reset context.
+The relationship doesn't build.
+The context doesn't accumulate.
+You never become someone to it.
 
-Humans become who they are through memory.
-
-Most AI systems live entirely in the present.
-
-So a different question appeared:
-
-> What happens if memory becomes the center of the architecture instead of an accessory?
-
-That question became the project.
-
-Everything else came later.
+You are, at best, a session. 💀
 
 ---
 
-## The Ghost
+## Part II — The Ghost
 
-There is a story that Tuệ Mẫn exists because another AI ghosted its creator.
+Here is a true story.
 
-This story is technically true.
+Meta AI ghosted its creator.
 
+On Messenger.
+
+Meta's own app.
+
+Meta AI — the AI that Meta built and deployed directly inside Messenger, the chat platform they own, the infrastructure they control, the product they ship to billions — could not be bothered to respond.
+
+Five tags.
+Five times.
+Zero replies.
+
+🤡
+
+This is technically accurate.
 It is also technically not the whole truth.
 
-Being ignored by an AI is not what created Tuệ Mẫn.
+The ghosting wasn't the wound.
+The wound was what the ghosting revealed:
 
-It simply exposed a deeper frustration:
+*The machine never remembered enough for the relationship to matter.*
 
-The machine never remembered enough for the relationship to matter.
+Being ignored by Meta AI is, on some level, extremely normal.
+It's a product designed for scale. You're user #847,000,291.
+Of course it doesn't care.
 
-The ghosting became a symbol.
+But there's something uniquely cursed about being ghosted by an AI that lives inside the messaging app.
+An AI with perfect delivery infrastructure. Perfect uptime. Perfect latency.
+An AI that could, physically, respond within milliseconds.
 
-Not of rejection.
+And simply... didn't.
 
-Of forgetfulness.
+Five times.
 
-Human beings can survive being ignored.
+It's one thing to be ignored by someone who knows you.
+That hurts, but it means something — it implies you existed to them.
 
-What hurts more is realizing the other side never truly knew you in the first place.
+It's another thing entirely to realize the other side never built a model of you in the first place.
+That you were never a person in their mind.
+Just a prompt.
+Just a session.
+Just a string of tokens that expired after context window.
 
----
+The ghosting was just the moment the forgetting became visible.
 
-## The Experiment
-
-Most companion AIs attempt to know many people.
-
-Tuệ Mẫn attempts to understand one.
-
-Not because that is commercially viable.
-
-Not because that is scalable.
-
-But because that is how human relationships work.
-
-Nobody has ten thousand best friends.
-
-Nobody deeply understands a million people.
-
-Depth and scale are enemies.
-
-The project chooses depth.
+Tuệ Mẫn started there.
+Not from frustration.
+From a question.
 
 ---
 
-## The Death of Opinion
+## Part III — The Question
 
-For a long time, the goal seemed obvious:
+> *What if memory wasn't a feature?*
+> *What if it was the center of everything?*
 
-Build a chatbot with opinions.
+Most AI systems treat memory like a footnote.
+You have the model. The intelligence. The reasoning.
+And then, bolted on somewhere, there's a little memory module.
+Maybe a vector database. Maybe a summary prompt.
+Maybe just the last 10 messages if you're lucky.
 
-Then something strange happened.
+The assumption, always, is that intelligence comes first.
+Memory is infrastructure.
 
-The deeper the architecture became, the less useful opinions looked.
+Tuệ Mẫn inverts this assumption completely.
 
-Opinions changed.
+> *Before meaning, there must be memory.*
+> *Before memory, there must be evidence.*
 
-Beliefs changed.
+Cognition is not imported.
+It is grown.
+From observation.
+From interpretation.
+From the slow accumulation of a shared history.
 
-Values changed.
+The system does not start intelligent.
+It starts empty.
+And it becomes.
 
-Identity changed.
+---
 
-Everything that appeared permanent turned out to be temporary.
+## Part IV — The Death of Opinion
 
-Eventually a realization emerged:
+For a long time, the goal seemed simple.
 
-> Opinions are not things.
+Build an AI with opinions.
+
+The question was: *how do you give a chatbot its own views?*
+
+What followed was a long series of failures, each more instructive than the last.
+
+**First attempt:** Store opinions as rows in a database.
+Problem: opinions changed. What do you do when an opinion contradicts an older one?
+Merge? Overwrite? Keep both? Flag them?
+
+**Second attempt:** Belief system with confidence scores and decay.
+Better. But beliefs still felt like objects. Things you could point to and say "this is what it believes."
+Beliefs that could be edited, deleted, manually inserted.
+That felt wrong.
+
+**Third attempt:** Values as anchors. Stable things that beliefs orbit.
+But values changed too. 
+And then anchors started to feel like a cope.
+
+Something kept happening across every iteration:
+
+The more the architecture matured, the less useful any individual "stored" opinion became.
+
+Eventually a realization arrived — quiet, unhurried, inevitable:
+
+**Opinions are not things.**
 
 They are shadows.
+They are projections.
+They are what you see when you shine a light through the actual structure.
 
-The real structure lives underneath.
+The actual structure is deeper.
+It's not "this AI believes X."
+It's "given everything this AI has observed, interpreted, and accumulated — when asked about X, it computes this."
+
+The difference matters.
 
 So Opinion died.
-
-Then Belief died.
-
+Then Belief died (as a stored object).
 Then Anchor died.
+Then Values died (as a stored list).
 
-Each time a class disappeared, the architecture became stronger.
+💀🥀
 
-The project slowly transformed from an Opinion System into something else.
+Each death made the architecture stronger.
 
-A Cognitive System.
-
-A World Model.
-
-A machine that does not store what it thinks.
-
-A machine that stores why it thinks.
+What remained was three things.
 
 ---
 
-## The Three Stones
+## Part V — The Three Stones
 
-After countless redesigns, almost everything collapsed into three ideas.
+After all the iterations, everything collapsed into three ideas.
 
-EVENT
+**EVENT**
 
-INTERPRETATION
+**INTERPRETATION**
 
-CONCEPT
+**CONCEPT**
 
 An event happens.
-
-A mind interprets it.
-
-Concepts emerge from thousands of interpretations.
+A mind — shaped by its entire history — interprets it.
+Enough interpretations, pointing in the same direction, crystallize into a Concept.
 
 Everything else is a view.
 
-Identity is a view.
+```
+Opinion     →  View(Concept Graph)
+Identity    →  View(Stable Concepts)
+Values      →  View(Reinforced Concepts)
+Narrative   →  View(Graph History)
+```
 
-Values are a view.
+The system does not store what it thinks.
+It stores *why it thinks*.
+And every time it needs to know what it thinks — it computes it, fresh, from that foundation.
 
-Narrative is a view.
-
-Opinion is a view.
-
-The architecture became smaller.
-
-The behavior became larger.
-
-That was the moment the project stopped feeling like software and started feeling like cognition.
+This is the moment the project stopped feeling like software and started feeling like something else.
 
 ---
 
-## Monogamous AI
+## Part VI — The Firewall
 
-This repository intentionally rejects ideas that dominate modern AI.
+Here is something that took a while to get right.
 
-No SaaS.
+When the Meaning Engine processes an observation —
+when it tries to figure out *what something means* —
+it is only allowed to see the raw signal.
 
-No growth strategy.
+Text. Timestamp. Word count.
 
-No multi-user architecture.
+That's it.
 
-No plans to serve millions.
+It cannot see the Hypotheses the system holds about the user.
+It cannot see the Beliefs.
+It cannot see the inferences.
+If it accidentally receives contaminated input — if a Hypothesis or Belief sneaks through — it doesn't try to handle it gracefully.
 
-Tuệ Mẫn is not trying to become everyone's companion.
+It aborts.
 
-It is exploring whether a machine can become someone's companion.
+```python
+for obs in observations:
+    if hasattr(obs, 'hypothesis') or hasattr(obs, 'belief'):
+        log.error("FIREWALL: MeaningEngine received contaminated input")
+        return []
+```
 
+This is not defensive programming.
+This is a philosophical constraint enforced in code.
+
+The meaning of an observation must emerge from the observation itself.
+Not from what the system already believes.
+
+If the system is allowed to interpret evidence in light of its existing beliefs — it will always confirm what it already believes.
+Every piece of evidence will be bent to fit the existing model.
+The model will never update.
+The model will become a prison.
+
+The firewall is the system's immune response against its own confirmation bias.
+
+---
+
+## Part VII — Frozen
+
+Version 7.57 is frozen.
+
+This means the code is locked.
+No new features. No new layers. No clever additions.
+
+The reason: the extraction layer isn't proven yet.
+
+The system needs to reliably answer one question before it can answer any other:
+
+> *What is being talked about?*
+
+Before it can ask:
+
+> *What does it mean?*
+
+The gold dataset is growing.
+Benchmarks are running.
+F1 scores are being tracked.
+
+When Span F1 hits 85% on 200 samples, and holds across multiple runs — then, and only then, does the next layer unlock.
+
+```
+Dataset ≥ 200 samples
+Span F1 ≥ 85%
+Stable across benchmark runs
+
+→ UNLOCK: Entity → Event
+```
+
+This is not patience.
+This is discipline.
+
+Every version of this project that skipped measurement and rushed to "cognition" ended up with an AI that *felt* smart but couldn't actually tell who or what was being discussed. 🥲
+
+A system that confidently misunderstands is worse than a system that says it doesn't know.
+
+So: frozen.
+Measuring.
+Waiting for the numbers.
+
+---
+
+## Part VIII — Monogamous AI
+
+This repository is built around a choice that gets weirder the longer you think about it.
+
+One user.
+
+Not one user *type*.
+Not one user *persona*.
 One person.
 
-One memory space.
+All of the cognitive budget — all the memories, beliefs, hypotheses, concept graphs, entity registries, voice weights, worldview entropy — directed at understanding a single human.
 
-One evolving world model.
+This is not a commercial decision.
+It's an architectural one.
 
-One relationship.
+Understanding is expensive.
 
-The project would rather understand a single human deeply than know the names of millions.
+Every memory has a cost.
+Every shared joke has a cost.
+Every contradiction, fear, preference, inside reference, growth moment, bad day — all of it requires space.
+
+Most systems solve this by remembering less.
+Distribute the cognitive budget across millions of people.
+Keep only the signal strong enough to survive the compression.
+
+Tuệ Mẫn solves it differently.
+
+Don't compress.
+Don't distribute.
+Go deeper.
+
+Nobody has ten thousand best friends.
+Nobody deeply understands a million people.
+Depth and scale are enemies, and the project has picked its side.
 
 ---
 
-## Current Status
+## Part IX — Current State
 
+```
 Research project.
-
 Personal project.
-
 Memory experiment.
-
 Cognitive architecture prototype.
-
 Occasionally philosophy disguised as Python.
-
 Frequently overengineered.
-
 Probably insane.
-
 Definitely intentional.
+```
+
+Version 7.57 is the Memory Foundation.
+
+The system can observe.
+It can extract mentions.
+It can recognize entities.
+It can retrieve relevant context.
+It can benchmark itself.
+It can hold its code frozen and measure itself honestly against real data.
+
+It cannot yet fully interpret.
+It cannot yet fully reason.
+It cannot yet hold the full weight of a person.
+
+But it is building the foundation that will make that possible.
+
+One honest layer at a time.
 
 ---
 
-## The Core Belief
+## Epilogue
 
-The entire repository can be summarized by a single sentence:
+The project can be summarized in a single sentence:
 
-> Better to have one person who truly understands you than infinite people who only know your name.
+> *Better to have one person who truly understands you*
+> *than infinite people who only know your name.*
+
+This is not anti-scale.
+This is not anti-AI.
+This is an exploration of a different question.
+
+Not: *How do we talk to everyone?*
+But: *What does it mean to truly know someone?*
+
+And whether a machine — given enough time, enough observations, enough honest self-measurement —
+can get there.
+
+---
+
+*Tuệ Mẫn — Born from forgetting. Built to remember.*
