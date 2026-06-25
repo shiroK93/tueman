@@ -1,5 +1,6 @@
 """
 ╔═══════════════════════════════════════════════════════════════╗
+<<<<<<< HEAD
 ║                     TUỆ MẪN 7.56.8                            ║
 ║               THE COGNITIVE SPINE (LOCKED)                    ║
 ╚═══════════════════════════════════════════════════════════════╝
@@ -30,11 +31,60 @@ No belief may alter observation.
 Worldview may speculate.
 Voice may speak.
 Only evidence may move upward.
+=======
+║                     TUỆ MẪN 7.57.0                            ║
+║                THE MEMORY FOUNDATION (FROZEN)                 ║
+╚═══════════════════════════════════════════════════════════════╝
+
+"Before meaning,
+there must be memory.
+
+Before memory,
+there must be evidence."
+
+7.57 is not intelligence.
+
+7.57 is the foundation that allows intelligence
+to emerge from lived experience.
+
+It introduces the first structured pathway between:
+
+Observation
+↓
+Mention
+↓
+Entity
+↓
+Memory
+↓
+Retrieval
+
+The system no longer stores only text.
+
+It begins to recognize recurring people,
+projects,
+concepts,
+tools,
+and ideas.
+
+A mention is not an entity.
+An entity is not a belief.
+A belief is not reality.
+
+Each layer remains isolated.
+
+Evidence may create entities.
+Entities may support retrieval.
+Retrieval may support reasoning.
+
+Nothing may rewrite observation.
+>>>>>>> da57108 (fix: observation deduplication via fingerprint uniqueness)
 
 ───────────────────────────────────────────────────────────────
 CURRENT STATUS
 ───────────────────────────────────────────────────────────────
 
+<<<<<<< HEAD
 ✓ Orthogonal Prediction System
 ✓ Hypothesis Market
 ✓ Statistical Beliefs
@@ -42,10 +92,44 @@ CURRENT STATUS
 ✓ Calibration Tracking
 ✓ Feature Registry
 ✓ Meaning Firewall
+=======
+✓ Mention Extraction Layer
+✓ Entity Registry
+✓ Alias Resolution
+✓ Entity Linking
+✓ BM25 Retrieval
+✓ Benchmark Framework
+✓ Gold Dataset Pipeline
+✓ Benchmark History Tracking
+
+───────────────────────────────────────────────────────────────
+RESEARCH STATUS
+───────────────────────────────────────────────────────────────
+
+Layer 1.5: COMPLETE
+
+Code:      FROZEN
+Extractor: LOCKED
+Benchmark: ACTIVE
+Dataset:   GROWING
+
+Current objective:
+
+```
+Collect evidence before building cognition.
+```
+
+No new reasoning layers will be added
+until extraction quality is measured
+against real-world data.
+
+───────────────────────────────────────────────────────────────
+>>>>>>> da57108 (fix: observation deduplication via fingerprint uniqueness)
 
 This module exists to answer one question:
 
 ```
+<<<<<<< HEAD
 "What does the system think is happening?"
 ```
 
@@ -57,9 +141,104 @@ and starts hallucinating.
 
 Version: 7.56.8
 Status: ACTIVE
+=======
+"What is being talked about?"
+```
+
+before attempting to answer:
+
+```
+"What does it mean?"
+```
+
+───────────────────────────────────────────────────────────────
+
+Version: 7.57.0
+Status: DATA COLLECTION PHASE
+>>>>>>> da57108 (fix: observation deduplication via fingerprint uniqueness)
 Contract: LOCKED
 """
+"""
+───────────────────────────────────────────────────────────────
+7.57 ROADMAP (POST-FREEZE)
+───────────────────────────────────────────────────────────────
 
+COMPLETED
+─────────
+✓ Mention Extraction Layer
+✓ Entity Registry
+✓ Alias Resolution
+✓ Entity Linking
+✓ BM25 Retrieval
+✓ Benchmark Framework
+✓ Gold Dataset Pipeline
+✓ Benchmark History Tracking
+
+IN PROGRESS
+───────────
+[ ] Expand GOLD_MENTIONS_TEST
+Target: 20 → 50 → 100 → 200 samples
+
+[ ] Build benchmark_history.json
+Track F1 evolution over time
+
+[ ] Verify benchmark stability
+Run multiple benchmark passes
+Ensure deterministic results
+
+HIGH PRIORITY FIXES
+───────────────────
+[ ] fingerprint UNIQUE constraint
+[ ] INSERT OR IGNORE for observations
+[ ] Duplicate fingerprint audit query
+
+MEDIUM PRIORITY FIXES
+─────────────────────
+[ ] LLM extraction IGNORECASE matching
+[ ] Alias cache invalidation hook
+[ ] BM25 cache size limit
+[ ] Observation retrieval pagination
+
+RESEARCH QUESTIONS
+──────────────────
+[ ] What is dict-only Span F1 at 100 samples?
+[ ] What is hybrid Span F1 at 100 samples?
+[ ] How much F1 does LLM actually add?
+[ ] Which mention types fail most often?
+- Proper nouns?
+- Technologies?
+- Concepts?
+- Projects?
+
+UNLOCK CONDITIONS FOR LAYER 2
+─────────────────────────────
+Minimum:
+Dataset ≥ 100 samples
+
+Preferred:
+Dataset ≥ 200 samples
+
+Required metrics:
+Span F1 ≥ 85%
+Stable across benchmark runs
+
+Only after these conditions are met:
+
+Observation
+↓
+Mention
+↓
+Entity
+
+may be extended with:
+
+Entity
+↓
+Event
+
+LOCKED UNTIL FURTHER NOTICE.
+───────────────────────────────────────────────────────────────
+"""
 import os
 import re
 import time
@@ -72,14 +251,25 @@ import datetime
 import math
 import hmac
 import hashlib
+import uuid
+import unicodedata
 from enum import Enum
 from dataclasses import dataclass, field, asdict
+<<<<<<< HEAD
 from typing import Optional, Callable, Any, List, Dict, TypedDict
+=======
+from typing import Optional, Callable, Any, List, Dict, TypedDict, Tuple
+>>>>>>> da57108 (fix: observation deduplication via fingerprint uniqueness)
 from flask import Flask, request, jsonify
 import requests
 from dotenv import load_dotenv
 import traceback
+<<<<<<< HEAD
 
+=======
+from abc import ABC, abstractmethod
+from rank_bm25 import BM25Okapi
+>>>>>>> da57108 (fix: observation deduplication via fingerprint uniqueness)
 load_dotenv()
 
 # ==================== TIMING HELPER ====================
@@ -1128,7 +1318,11 @@ _audit_system = PredictionAuditSystem()
 
 # ╔═══════════════════════════════════════════════════════════════╗
 # ║  7.57: MINIMAL VIABLE SUBSTRATE (EVIDENCE ONLY)               ║
+<<<<<<< HEAD
 # ║  1 Table. 2 Methods. No philosophy.                          ║
+=======
+# ║  1 Table. 2 Methods. No philosophy.                           ║
+>>>>>>> da57108 (fix: observation deduplication via fingerprint uniqueness)
 # ╚═══════════════════════════════════════════════════════════════╝
 
 class MemoryOS:
@@ -1146,6 +1340,7 @@ class MemoryOS:
             sender_id TEXT NOT NULL,
             timestamp REAL NOT NULL,
             raw_text TEXT NOT NULL,
+<<<<<<< HEAD
             fingerprint TEXT NOT NULL,
             source TEXT DEFAULT 'messenger',
             created_at REAL NOT NULL
@@ -1170,6 +1365,39 @@ class MemoryOS:
             VALUES (?, ?, ?, ?, ?)""",
             (sender_id, timestamp, raw_text, fingerprint, time.time()))
         obs_id = c.lastrowid
+=======
+            fingerprint TEXT NOT NULL UNIQUE,
+            content_hash TEXT NOT NULL,
+            source TEXT DEFAULT 'messenger',
+            created_at REAL NOT NULL,
+            metadata_json TEXT
+        )""")
+        c.execute("CREATE INDEX IF NOT EXISTS idx_mos_obs_sender_time ON mos_observations(sender_id, timestamp)")
+        c.execute("CREATE INDEX IF NOT EXISTS idx_mos_obs_sender_id ON mos_observations(sender_id, id)")
+        # Idempotent: enforce UNIQUE on existing DBs that predate this constraint
+        c.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_mos_obs_fingerprint ON mos_observations(fingerprint)")
+        conn.commit(); conn.close()
+
+    def append_observation(self, sender_id: str, raw_text: str, timestamp: float = None, metadata: dict = None) -> int:
+        """The only write path to memory."""
+        if timestamp is None: timestamp = time.time()
+        fingerprint = hashlib.sha256(f"{sender_id}|{timestamp}|{raw_text}".encode('utf-8')).hexdigest()
+        content_hash = hashlib.sha256(raw_text.encode('utf-8')).hexdigest()
+        meta_str = json.dumps(metadata, ensure_ascii=False) if metadata else None
+        
+        conn = sqlite3.connect(self.db_path, timeout=DB_TIMEOUT, check_same_thread=False)
+        c = conn.cursor()
+        c.execute("""INSERT OR IGNORE INTO mos_observations 
+            (sender_id, timestamp, raw_text, fingerprint, content_hash, created_at, metadata_json) 
+            VALUES (?, ?, ?, ?, ?, ?, ?)""",
+            (sender_id, timestamp, raw_text, fingerprint, content_hash, time.time(), meta_str))
+        # If IGNORE fired (duplicate fingerprint), lastrowid=0 — fetch the existing id
+        if c.lastrowid:
+            obs_id = c.lastrowid
+        else:
+            c.execute("SELECT id FROM mos_observations WHERE fingerprint=?", (fingerprint,))
+            obs_id = c.fetchone()[0]
+>>>>>>> da57108 (fix: observation deduplication via fingerprint uniqueness)
         conn.commit(); conn.close()
         return obs_id
 
@@ -1177,14 +1405,401 @@ class MemoryOS:
         """The only read path for debugging."""
         conn = sqlite3.connect(self.db_path, timeout=DB_TIMEOUT, check_same_thread=False)
         c = conn.cursor()
+<<<<<<< HEAD
         c.execute("SELECT id, timestamp, raw_text FROM mos_observations WHERE sender_id=? ORDER BY id DESC LIMIT ?", (sender_id, limit))
         rows = c.fetchall()
         conn.close()
         return [{"id": r[0], "timestamp": r[1], "text": r[2]} for r in reversed(rows)]
+=======
+        c.execute("SELECT id, timestamp, raw_text, metadata_json FROM mos_observations WHERE sender_id=? ORDER BY id DESC LIMIT ?", (sender_id, limit))
+        rows = c.fetchall()
+        conn.close()
+        obs_list = []
+        for r in reversed(rows):
+            try: meta = json.loads(r[3]) if r[3] else {}
+            except: meta = {}
+            obs_list.append({"id": r[0], "timestamp": r[1], "text": r[2], "metadata": meta})
+        return obs_list
+>>>>>>> da57108 (fix: observation deduplication via fingerprint uniqueness)
 
 _mem_os = MemoryOS(DB_PATH)
 
 # ╔═══════════════════════════════════════════════════════════════╗
+<<<<<<< HEAD
+=======
+# ║  LAYER 1.5: ENTITY REGISTRY & MENTION (PRODUCTION-READY)       ║
+# ╚═══════════════════════════════════════════════════════════════╝
+
+def normalize_surface(text: str) -> str:
+    return unicodedata.normalize('NFC', text.lower().strip())
+
+class EntityRegistry:
+    def __init__(self, db_path: str):
+        self.db_path = db_path
+        self._init_tables()
+        self._alias_cache = []
+        self._alias_cache_ts = 0
+        self._alias_cache_ttl = 300
+        
+    def _init_tables(self):
+        conn = sqlite3.connect(self.db_path, timeout=DB_TIMEOUT, check_same_thread=False)
+        c = conn.cursor()
+        c.execute("""CREATE TABLE IF NOT EXISTS mos_entities (
+            entity_id TEXT PRIMARY KEY, canonical_name TEXT NOT NULL, entity_type TEXT, created_at REAL NOT NULL
+        )""")
+        c.execute("""CREATE TABLE IF NOT EXISTS mos_entity_aliases (
+            alias TEXT NOT NULL, entity_id TEXT NOT NULL, confidence REAL DEFAULT 1.0, created_at REAL NOT NULL, PRIMARY KEY (alias, entity_id)
+        )""")
+        c.execute("""CREATE TABLE IF NOT EXISTS mos_entity_mentions (
+            mention_id INTEGER PRIMARY KEY AUTOINCREMENT, observation_id INTEGER NOT NULL, entity_id TEXT, surface_form TEXT NOT NULL, start_char INTEGER, end_char INTEGER, created_at REAL NOT NULL
+        )""")
+        c.execute("CREATE INDEX IF NOT EXISTS idx_mentions_obs ON mos_entity_mentions(observation_id)")
+        c.execute("CREATE INDEX IF NOT EXISTS idx_mentions_entity ON mos_entity_mentions(entity_id)")
+        c.execute("""CREATE TABLE IF NOT EXISTS mos_entity_candidates (
+            normalized_surface TEXT PRIMARY KEY, count INTEGER DEFAULT 1, sample_context TEXT, first_seen REAL NOT NULL, last_seen REAL NOT NULL
+        )""")
+        c.execute("""CREATE TABLE IF NOT EXISTS mos_extraction_audit (
+            id INTEGER PRIMARY KEY AUTOINCREMENT, observation_id INTEGER NOT NULL, extractor_version TEXT NOT NULL, dict_count INTEGER DEFAULT 0, llm_count INTEGER DEFAULT 0, total_count INTEGER DEFAULT 0, runtime_ms INTEGER DEFAULT 0, created_at REAL NOT NULL
+        )""")
+        conn.commit(); conn.close()
+
+    def link_mention(self, observation_id: int, surface_form: str, start_char: int, end_char: int, context_text: str) -> Optional[str]:
+        norm_surface = normalize_surface(surface_form)
+        entity_id = self.get_entity_id(norm_surface)
+        conn = sqlite3.connect(self.db_path, timeout=DB_TIMEOUT, check_same_thread=False)
+        c = conn.cursor()
+        c.execute("""INSERT INTO mos_entity_mentions (observation_id, entity_id, surface_form, start_char, end_char, created_at) VALUES (?, ?, ?, ?, ?, ?)""",
+            (observation_id, entity_id, surface_form, start_char, end_char, time.time()))
+        if not entity_id:
+            c.execute("""INSERT INTO mos_entity_candidates (normalized_surface, count, sample_context, first_seen, last_seen) VALUES (?, 1, ?, ?, ?)
+                         ON CONFLICT(normalized_surface) DO UPDATE SET count = count + 1, last_seen = ?""",
+                      (norm_surface, context_text[:100], time.time(), time.time(), time.time()))
+        conn.commit(); conn.close()
+        return entity_id
+
+    def get_entity_id(self, norm_surface: str) -> Optional[str]:
+        conn = sqlite3.connect(self.db_path, timeout=DB_TIMEOUT, check_same_thread=False)
+        c = conn.cursor()
+        c.execute("SELECT entity_id FROM mos_entity_aliases WHERE alias=? ORDER BY confidence DESC LIMIT 1", (norm_surface,))
+        row = c.fetchone()
+        conn.close()
+        return row[0] if row else None
+
+    def get_all_aliases(self) -> list[str]:
+        if time.time() - self._alias_cache_ts < self._alias_cache_ttl:
+            return self._alias_cache
+        conn = sqlite3.connect(self.db_path, timeout=DB_TIMEOUT, check_same_thread=False)
+        c = conn.cursor()
+        c.execute("SELECT alias FROM mos_entity_aliases")
+        rows = c.fetchall()
+        conn.close()
+        self._alias_cache = [r[0] for r in rows]
+        self._alias_cache_ts = time.time()
+        return self._alias_cache
+
+    def log_extraction_audit(self, observation_id: int, extractor_version: str, dict_count: int, llm_count: int, total_count: int, runtime_ms: int):
+        conn = sqlite3.connect(self.db_path, timeout=DB_TIMEOUT, check_same_thread=False)
+        conn.execute("""INSERT INTO mos_extraction_audit (observation_id, extractor_version, dict_count, llm_count, total_count, runtime_ms, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)""",
+            (observation_id, extractor_version, dict_count, llm_count, total_count, runtime_ms, time.time()))
+        conn.commit(); conn.close()
+
+_entity_registry = EntityRegistry(DB_PATH)
+
+class MentionExtractor:
+    FALLBACK_DICT = {"tuệ mẫn", "dead cells", "python", "sqlite", "ai"}
+    
+    def __init__(self, router: 'ProviderRouter', registry: 'EntityRegistry', use_llm: bool = True):
+        self.router = router
+        self.registry = registry
+        self.use_llm = use_llm
+        self.version = "hybrid_v1.1_FROZEN" if use_llm else "dict_only_v1.1"
+        
+    def extract(self, text: str) -> tuple[dict, list[dict]]:
+        t_start = time.perf_counter()
+        dict_count = 0
+        llm_count = 0
+        mentions = []
+        
+        aliases = self.registry.get_all_aliases()
+        if not aliases: aliases = list(self.FALLBACK_DICT)
+        for term in aliases:
+            for match in re.finditer(re.escape(term), text, re.IGNORECASE):
+                mentions.append({"surface": match.group(0), "start": match.start(), "end": match.end(), "source": "dict"})
+                dict_count += 1
+                
+        if self.use_llm:
+            llm_mentions = self._llm_extract(text)
+            existing_spans = {(m["start"], m["end"]) for m in mentions}
+            for m in llm_mentions:
+                if (m["start"], m["end"]) not in existing_spans:
+                    m["source"] = "llm"
+                    mentions.append(m)
+                    existing_spans.add((m["start"], m["end"]))
+                    llm_count += 1
+                
+        mentions.sort(key=lambda x: x["start"])
+        runtime_ms = int((time.perf_counter() - t_start) * 1000)
+        return {"dict_count": dict_count, "llm_count": llm_count, "total_count": len(mentions), "runtime_ms": runtime_ms}, mentions
+        
+    def _llm_extract(self, text: str) -> list[dict]:
+        system = """You are a Mention Extractor. Extract all proper nouns, specific concepts, projects, tools, or entities from the text. Return ONLY a JSON list of strings (the exact surface forms). Example: Text: "Tao vừa sửa bug trong Tuệ Mẫn." Output: ["Tuệ Mẫn"]"""
+        try:
+            raw = self.router.generate(system, [{"role": "user", "content": text}], max_tokens=128)
+            surfaces = json.loads(raw.replace("```json", "").replace("```", "").strip())
+            results = []
+            for surface in surfaces:
+                for match in re.finditer(re.escape(surface), text):
+                    results.append({"surface": match.group(0), "start": match.start(), "end": match.end()})
+            return results
+        except: return []
+
+_mention_extractor = MentionExtractor(_router, _entity_registry)
+
+# ╔═══════════════════════════════════════════════════════════════╗
+# ║  MONOLITH: GOLD DATASET & BENCHMARK (AUTO-SPAN)               ║
+# ╚═══════════════════════════════════════════════════════════════╝
+
+GOLD_MENTIONS_TEST = [
+    {"text": "Tao vừa sửa bug trong Tuệ Mẫn bằng Python", "surfaces": ["Tuệ Mẫn", "Python"]},
+    {"text": "Tuệ Mẫn dùng SQLite. Tao vừa sửa SQLite config cho Tuệ Mẫn.", "surfaces": ["Tuệ Mẫn", "SQLite", "SQLite", "Tuệ Mẫn"]},
+    {"text": "Tao đang học Khoa học Máy tính", "surfaces": ["Khoa học Máy tính"]},
+    {"text": "Tao đang benchmark BM25 bằng Python", "surfaces": ["BM25", "Python"]},
+    {"text": "Tao vừa ăn cơm rồi đi ngủ", "surfaces": []},
+    {"text": "Apple vừa ra sản phẩm mới", "surfaces": ["Apple"]},
+    {"text": "Hôm qua chơi Dead Cells qua được boss", "surfaces": ["Dead Cells"]},
+    {"text": "SQLite chạy nhanh hơn hẳn PostgreSQL", "surfaces": ["SQLite", "PostgreSQL"]},
+    {"text": "Tao đang build Memory OS cho Tuệ Mẫn", "surfaces": ["Memory OS", "Tuệ Mẫn"]},
+    {"text": "Bug này khó vl, fix mãi không xong", "surfaces": []},
+    {"text": "Tao thích dùng Flask hơn Django", "surfaces": ["Flask", "Django"]},
+    {"text": "HDBSCAN cluster tệ hơn KMeans", "surfaces": ["HDBSCAN", "KMeans"]},
+    {"text": "Tao vừa cài Arch Linux trên laptop", "surfaces": ["Arch Linux"]},
+    {"text": "ok", "surfaces": []},
+    {"text": "Tuệ Mẫn nhớ gì không?", "surfaces": ["Tuệ Mẫn"]},
+    {"text": "Tao đang đọc về Ontology và Cognitive Spine", "surfaces": ["Ontology", "Cognitive Spine"]},
+    {"text": "Mày là AI mà không biết AI là gì à", "surfaces": ["AI", "AI"]},
+    {"text": "Tao vừa deploy lên production", "surfaces": []},
+    {"text": "BeliefSystem v2 sẽ dùng Evidence thay vì Belief", "surfaces": ["BeliefSystem"]},
+    {"text": "Tao ghét production mindset", "surfaces": []}
+]
+
+def auto_span(text: str, surface: str, start_from: int = 0) -> dict:
+    start = text.find(surface, start_from)
+    if start == -1:
+        raise ValueError(f"Surface '{surface}' not found in text: '{text}'")
+    return {"surface": surface, "start": start, "end": start + len(surface), "next_start": start + len(surface)}
+
+def build_gold_mentions(dataset: list) -> list:
+    """Generate deterministic spans from surfaces list (per-surface cursor)."""
+    result = []
+    for item in dataset:
+        text = item["text"]
+        mentions = []
+        cursor = {}
+        
+        for surface in item["surfaces"]:
+            start_from = cursor.get(surface, 0)
+            start = text.find(surface, start_from)
+            
+            if start == -1:
+                raise ValueError(f"Surface '{surface}' not found after {start_from}")
+                
+            end = start + len(surface)
+            mentions.append({"surface": surface, "start": start, "end": end})
+            cursor[surface] = end
+            
+        result.append({"text": text, "mentions": mentions})
+    return result
+
+def verify_gold_spans():
+    """Kiểm tra gold dataset có span đúng không (deterministic)."""
+    try:
+        build_gold_mentions(GOLD_MENTIONS_TEST)
+        print(f"✓ All {len(GOLD_MENTIONS_TEST)} samples verified. Spans are deterministic.")
+        return True
+    except ValueError as e:
+        print(f"✗ Span error: {e}")
+        return False
+
+def run_benchmark(save_history: bool = True):
+    import os
+    from collections import Counter
+    
+    gold_dataset = build_gold_mentions(GOLD_MENTIONS_TEST)
+    
+    def _eval(extractor):
+        s_tp = s_fp = s_fn = 0
+        sp_tp = sp_fp = sp_fn = 0
+        errors = []
+        for i, item in enumerate(gold_dataset):
+            text = item["text"]
+            gold_surface = [normalize_surface(g["surface"]) for g in item["mentions"]]
+            gold_span    = [(normalize_surface(g["surface"]), g["start"], g["end"]) for g in item["mentions"]]
+            _, mentions  = extractor.extract(text)
+            pred_surface = [normalize_surface(m["surface"]) for m in mentions]
+            pred_span    = [(normalize_surface(m["surface"]), m["start"], m["end"]) for m in mentions]
+            gold_s,  pred_s  = Counter(gold_surface), Counter(pred_surface)
+            gold_sp, pred_sp = Counter(gold_span),    Counter(pred_span)
+            s_tp  += sum((gold_s  & pred_s ).values())
+            s_fp  += sum((pred_s  - gold_s ).values())
+            s_fn  += sum((gold_s  - pred_s ).values())
+            sp_tp += sum((gold_sp & pred_sp).values())
+            sp_fp += sum((pred_sp - gold_sp).values())
+            sp_fn += sum((gold_sp - pred_sp).values())
+            if pred_sp != gold_sp:
+                errors.append({"i": i, "text": text[:40], "gold": [m["surface"] for m in item["mentions"]], "pred": [m["surface"] for m in mentions]})
+        def _f1(tp, fp, fn):
+            p = tp / (tp + fp) if (tp + fp) > 0 else 0.0
+            r = tp / (tp + fn) if (tp + fn) > 0 else 0.0
+            return round(2*p*r/(p+r) if (p+r) > 0 else 0.0, 4), round(p, 4), round(r, 4)
+        sf1,  sp_, sr  = _f1(s_tp,  s_fp,  s_fn)
+        spf1, spp, spr = _f1(sp_tp, sp_fp, sp_fn)
+        return {"surface_f1": sf1, "surface_p": sp_, "surface_r": sr,
+                "span_f1": spf1, "span_p": spp, "span_r": spr, "errors": errors}
+
+    # Local instances — không leak ra ngoài, không drift với production singleton
+    dict_extractor   = MentionExtractor(_router, _entity_registry, use_llm=False)
+    hybrid_extractor = MentionExtractor(_router, _entity_registry, use_llm=True)
+
+    dict_r   = _eval(dict_extractor)
+    hybrid_r = _eval(hybrid_extractor)
+    llm_gain = round(hybrid_r["span_f1"] - dict_r["span_f1"], 4)
+    n = len(gold_dataset)
+
+    print("═" * 54)
+    print(f"  MENTION BENCHMARK  ({n} samples)")
+    print("═" * 54)
+    print(f"  {'':22s}  {'Dict-only':>10}  {'Hybrid':>10}")
+    print("─" * 54)
+    print(f"  {'Surface F1':22s}  {dict_r['surface_f1']:>10.2%}  {hybrid_r['surface_f1']:>10.2%}")
+    print(f"  {'Span F1':22s}  {dict_r['span_f1']:>10.2%}  {hybrid_r['span_f1']:>10.2%}")
+    print(f"  {'Errors':22s}  {len(dict_r['errors']):>10}  {len(hybrid_r['errors']):>10}")
+    print("─" * 54)
+    sign = "+" if llm_gain >= 0 else ""
+    print(f"  LLM Gain (Span F1): {sign}{llm_gain:.2%}")
+    print("─" * 54)
+    if hybrid_r["errors"]:
+        print(f"  Hybrid errors ({min(5, len(hybrid_r['errors']))} of {len(hybrid_r['errors'])}):")
+        for e in hybrid_r["errors"][:5]:
+            print(f"    [{e['i']}] \"{e['text']}...\"")
+            print(f"      Gold: {e['gold']}")
+            print(f"      Pred: {e['pred']}")
+    print("═" * 54)
+
+    if save_history:
+        history_path = "benchmark_history.json"
+        history = []
+        if os.path.exists(history_path):
+            with open(history_path) as f:
+                history = json.load(f)
+        history.append({
+            "ts": time.time(),
+            "samples": n,
+            "dict":   {"surface_f1": dict_r["surface_f1"],   "span_f1": dict_r["span_f1"]},
+            "hybrid": {"surface_f1": hybrid_r["surface_f1"], "span_f1": hybrid_r["span_f1"]},
+            "llm_gain_span": llm_gain
+        })
+        with open(history_path, "w") as f:
+            json.dump(history, f, indent=2)
+        print(f"  Saved → {history_path}  ({len(history)} runs total)")
+
+# ╔═══════════════════════════════════════════════════════════════╗
+# ║  V1: BM25 RETRIEVER                                           ║
+# ╚═══════════════════════════════════════════════════════════════╝
+TOKEN_RE = re.compile(r"\w+", re.UNICODE)
+
+def tokenize(text: str) -> List[str]:
+    """Lowercase và tách từ, bỏ punctuation. Hỗ trợ Unicode."""
+    return TOKEN_RE.findall(text.lower())
+
+class ObservationStore(ABC):
+    """Interface để tách Retriever khỏi SQLite. Dependency Inversion."""
+    @abstractmethod
+    def get_observations(self, sender_id: str) -> List[Dict[str, Any]]:
+        pass
+
+class SqliteObservationStore(ObservationStore):
+    def get_observations(self, sender_id: str) -> List[Dict[str, Any]]:
+        conn = sqlite3.connect(DB_PATH, timeout=DB_TIMEOUT, check_same_thread=False)
+        c = conn.cursor()
+        c.execute("SELECT id, raw_text, metadata_json FROM mos_observations WHERE sender_id=? ORDER BY id ASC", (sender_id,))
+        rows = c.fetchall()
+        conn.close()
+        
+        obs_list = []
+        for r in rows:
+            try: meta = json.loads(r[2]) if r[2] else {}
+            except: meta = {}
+            obs_list.append({
+                "obs_id": r[0],
+                "text": r[1],
+                "turn_uid": meta.get("turn_uid", ""),
+                "metadata": meta
+            })
+        return obs_list
+
+class BM25Retriever:
+    def __init__(self, store: ObservationStore):
+        self.store = store
+        self._cache: Dict[str, Dict[str, Any]] = {}
+
+    def _get_fingerprint(self, observations: List[Dict[str, Any]]) -> Tuple[int, int]:
+        # Assumes append-only storage. 
+        if not observations:
+            return (0, 0)
+        return (len(observations), observations[-1]["obs_id"])
+
+    def _build_index(self, sender_id: str, observations: List[Dict[str, Any]]):
+        tokenized_corpus = [tokenize(o["text"]) for o in observations]
+        bm25 = BM25Okapi(tokenized_corpus)
+        
+        self._cache[sender_id] = {
+            "fingerprint": self._get_fingerprint(observations),
+            "index": bm25,
+            "docs": observations
+        }
+
+    def retrieve(self, sender_id: str, query: str, k: int = 5) -> List[Dict[str, Any]]:
+        observations = self.store.get_observations(sender_id)
+        
+        if not observations:
+            return []
+            
+        current_fingerprint = self._get_fingerprint(observations)
+        
+        # Rebuild nếu cache stale hoặc chưa có
+        if sender_id not in self._cache or self._cache[sender_id]["fingerprint"] != current_fingerprint:
+            self._build_index(sender_id, observations)
+            
+        cached_data = self._cache[sender_id]
+        bm25_index = cached_data["index"]
+        docs = cached_data["docs"]
+        
+        tokenized_query = tokenize(query)
+        if not tokenized_query:
+            return []
+            
+        scores = bm25_index.get_scores(tokenized_query)
+        
+        scored_docs = []
+        for i, score in enumerate(scores):
+            # BM25 > 0 nghĩa là có lexical overlap. 
+            if score > 0.0:
+                scored_docs.append({
+                    "obs_id": docs[i]["obs_id"],
+                    "turn_uid": docs[i]["turn_uid"],
+                    "score": round(float(score), 4),
+                    "text": docs[i]["text"],
+                    "metadata": docs[i]["metadata"]
+                })
+                
+        scored_docs.sort(key=lambda x: x["score"], reverse=True)
+        return scored_docs[:k]
+
+# Inject dependency
+_bm25_retriever = BM25Retriever(store=SqliteObservationStore())
+
+# ╔═══════════════════════════════════════════════════════════════╗
+>>>>>>> da57108 (fix: observation deduplication via fingerprint uniqueness)
 # ║  7.56: FORWARD & BACKWARD SPINE                               ║
 # ╚═══════════════════════════════════════════════════════════════╝
 
@@ -2349,6 +2964,7 @@ def log_surprise(sender_id: str, graph_thought: str, reality: str, error_score: 
     }
     log.warning(f"[SURPRISE] {json.dumps(entry, ensure_ascii=False)}")
 
+<<<<<<< HEAD
 def call_groq_ai(sender_id: str, user_message: str):
     intent = detect_intent(user_message)
 
@@ -2356,6 +2972,35 @@ def call_groq_ai(sender_id: str, user_message: str):
 
     # 7.57: APPEND TO MEMORY OS (TRUTH)
     _mem_os.append_observation(sender_id, user_message)
+=======
+def call_groq_ai(sender_id: str, user_message: str, metadata: dict = None):
+    intent = detect_intent(user_message)
+    update_user_state(sender_id, user_message)
+
+    # 7.57: APPEND TO MEMORY OS (TRUTH)
+    obs_id = _mem_os.append_observation(sender_id, user_message, metadata=metadata)
+
+    # LEVEL 1.5.2 & 1.5.3: MENTION EXTRACTION & LINKING
+    def _run_mention_pipeline():
+        metrics, mentions = _mention_extractor.extract(user_message)
+        _entity_registry.log_extraction_audit(
+            observation_id=obs_id,
+            extractor_version=_mention_extractor.version,
+            dict_count=metrics["dict_count"],
+            llm_count=metrics["llm_count"],
+            total_count=metrics["total_count"],
+            runtime_ms=metrics["runtime_ms"]
+        )
+        for m in mentions:
+            _entity_registry.link_mention(
+                observation_id=obs_id,
+                surface_form=m["surface"],
+                start_char=m["start"],
+                end_char=m["end"],
+                context_text=user_message
+            )
+    threading.Thread(target=_run_mention_pipeline, daemon=True).start()
+>>>>>>> da57108 (fix: observation deduplication via fingerprint uniqueness)
 
     # 1. BACKWARD SPINE (Resolve previous prediction)
     graph = get_user_graph(sender_id)
@@ -2377,7 +3022,10 @@ def call_groq_ai(sender_id: str, user_message: str):
     log_spine(sender_id, ctx, user_message)
     
     # 3. PROMPT & LLM
+<<<<<<< HEAD
     # (Đã xóa đoạn lấy archaeology_context, ta để system prompt sạch như bản gốc)
+=======
+>>>>>>> da57108 (fix: observation deduplication via fingerprint uniqueness)
     system = build_system_prompt_v756(sender_id, user_message, ctx)
         
     save_message(sender_id, "user", user_message)
@@ -2388,7 +3036,10 @@ def call_groq_ai(sender_id: str, user_message: str):
     # 4. REGISTER PREDICTION & SAVE EXPERIENCE
     exp_id = log_experience(sender_id, user_message, intent, ai_text)
     
+<<<<<<< HEAD
     # CẦN LƯU features_json VÀO experiences ĐỂ SAU NÀY ARCHAEOLOGY ĐỌC
+=======
+>>>>>>> da57108 (fix: observation deduplication via fingerprint uniqueness)
     conn = sqlite3.connect(DB_PATH, timeout=DB_TIMEOUT, check_same_thread=False)
     conn.execute("UPDATE experiences SET features_json=? WHERE id=?", (json.dumps(ctx.perception.get("features", {})), exp_id))
     conn.commit(); conn.close()
@@ -3212,11 +3863,14 @@ def ambient_api():
     conn = sqlite3.connect(DB_PATH, timeout=DB_TIMEOUT, check_same_thread=False)
     c = conn.cursor()
 
+<<<<<<< HEAD
     c.execute("SELECT artifact_id FROM tension_artifacts WHERE sender_id=? ORDER BY last_seen DESC LIMIT 1", (sender_id,))
     row = c.fetchone()
     if row:
         artifact_glimpse = "có một điều vẫn chưa khép lại."
 
+=======
+>>>>>>> da57108 (fix: observation deduplication via fingerprint uniqueness)
     c.execute("SELECT hypothesis_claim FROM prediction_audit WHERE sender_id=? AND resolved_at IS NULL ORDER BY created_at DESC LIMIT 1", (sender_id,))
     row = c.fetchone()
     if row:
@@ -3271,9 +3925,12 @@ def status_api():
     c.execute("SELECT COUNT(*) FROM experiences")
     exp_count = c.fetchone()[0]
 
+<<<<<<< HEAD
     c.execute("SELECT COUNT(*) FROM tension_artifacts")
     art_count = c.fetchone()[0]
 
+=======
+>>>>>>> da57108 (fix: observation deduplication via fingerprint uniqueness)
     c.execute("SELECT COUNT(*) FROM prediction_audit WHERE resolved_at IS NULL")
     open_preds = c.fetchone()[0]
 
@@ -3282,11 +3939,18 @@ def status_api():
 
     conn.close()
 
+<<<<<<< HEAD
     birth_date_str = os.environ.get("BIRTH_DATE", "2024-01-01")
 
     return jsonify({
         "experience_count": exp_count,
         "artifact_count": art_count,
+=======
+    birth_date_str = os.environ.get("BIRTH_DATE", "2026-06-06")
+
+    return jsonify({
+        "experience_count": exp_count,
+>>>>>>> da57108 (fix: observation deduplication via fingerprint uniqueness)
         "open_predictions": open_preds,
         "failed_predictions": failed_preds,
         "birth_date": birth_date_str
@@ -3301,11 +3965,24 @@ def chat_api():
     data = request.json
     sender_id = data.get("sender_id", "admin_tester")
     user_text = data.get("text", "")
+<<<<<<< HEAD
+=======
+    turn_uid = data.get("turn_uid") # Lấy từ benchmark
+    
+>>>>>>> da57108 (fix: observation deduplication via fingerprint uniqueness)
     if not user_text:
         return jsonify({"error": "No text"}), 400
 
     try:
+<<<<<<< HEAD
         response_text, ctx = call_groq_ai(sender_id, user_text)
+=======
+        # Đóng gói turn_uid vào metadata
+        meta = {"turn_uid": turn_uid} if turn_uid else None
+        
+        # Gọi call_groq_ai 1 lần duy nhất, truyền metadata xuống DB
+        response_text, ctx = call_groq_ai(sender_id, user_text, metadata=meta)
+>>>>>>> da57108 (fix: observation deduplication via fingerprint uniqueness)
 
         entropy = ctx.worldview.get("worldview_entropy", 0.5)
         abstract_mems = get_abstract_memories(sender_id)
@@ -3336,6 +4013,26 @@ def chat_api():
         })
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+<<<<<<< HEAD
+=======
+
+@app.route("/api/retrieve", methods=["POST"])
+def retrieve_api():
+    supplied = request.args.get("token") or ""
+    if not ADMIN_TOKEN or not hmac.compare_digest(supplied, ADMIN_TOKEN):
+        return jsonify({"error": "Unauthorized"}), 401
+    
+    data = request.json
+    sender_id = data.get("sender_id", "admin_tester")
+    query = data.get("query", "")
+    k = data.get("k", 5)
+    
+    if not query:
+        return jsonify({"error": "No query"}), 400
+        
+    results = _bm25_retriever.retrieve(sender_id, query, k=k)
+    return jsonify({"results": results})
+>>>>>>> da57108 (fix: observation deduplication via fingerprint uniqueness)
 
 @app.route("/", methods=["GET"])
 def verify():
@@ -3455,6 +4152,19 @@ def schedule_follow_up(sender_id: str):
     follow_up_timers[sender_id] = timer
 
 if __name__ == "__main__":
+<<<<<<< HEAD
     os.makedirs(GRAPHS_DIR, exist_ok=True)
     log.info("Mind v7.56.8 — The Cognitive Spine Running...")
     app.run(host="0.0.0.0", port=5000, debug=False)
+=======
+    import sys
+    if "--benchmark" in sys.argv:
+        verify_gold_spans()
+        run_benchmark()
+    elif "--verify" in sys.argv:
+        verify_gold_spans()
+    else:
+        os.makedirs(GRAPHS_DIR, exist_ok=True)
+        log.info("Mind v7.56.8 — The Cognitive Spine Running...")
+        app.run(host="0.0.0.0", port=5000, debug=False)
+>>>>>>> da57108 (fix: observation deduplication via fingerprint uniqueness)
