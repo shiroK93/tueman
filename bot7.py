@@ -1,37 +1,5 @@
 """
 ╔═══════════════════════════════════════════════════════════════╗
-<<<<<<< HEAD
-║                     TUỆ MẪN 7.56.8                            ║
-║               THE COGNITIVE SPINE (LOCKED)                    ║
-╚═══════════════════════════════════════════════════════════════╝
-
-"Evidence flows upward.
-Preference flows downward.
-Meaning emerges elsewhere."
-
-7.56 is not a feature.
-
-7.56 is the boundary layer that prevents cognition from collapsing
-into self-reinforcing narrative loops.
-
-It enforces a strict separation between:
-
-```
-Observation  →  Perception  →  Worldview
-                               ↓
-                          Self-Model
-                               ↓
-                             Voice
-```
-
-No layer may rewrite the layer beneath it.
-No hypothesis may become evidence.
-No belief may alter observation.
-
-Worldview may speculate.
-Voice may speak.
-Only evidence may move upward.
-=======
 ║                     TUỆ MẪN 7.57.0                            ║
 ║                THE MEMORY FOUNDATION (FROZEN)                 ║
 ╚═══════════════════════════════════════════════════════════════╝
@@ -78,21 +46,11 @@ Entities may support retrieval.
 Retrieval may support reasoning.
 
 Nothing may rewrite observation.
->>>>>>> da57108 (fix: observation deduplication via fingerprint uniqueness)
 
 ───────────────────────────────────────────────────────────────
 CURRENT STATUS
 ───────────────────────────────────────────────────────────────
 
-<<<<<<< HEAD
-✓ Orthogonal Prediction System
-✓ Hypothesis Market
-✓ Statistical Beliefs
-✓ Prediction Audit Framework
-✓ Calibration Tracking
-✓ Feature Registry
-✓ Meaning Firewall
-=======
 ✓ Mention Extraction Layer
 ✓ Entity Registry
 ✓ Alias Resolution
@@ -124,24 +82,10 @@ until extraction quality is measured
 against real-world data.
 
 ───────────────────────────────────────────────────────────────
->>>>>>> da57108 (fix: observation deduplication via fingerprint uniqueness)
 
 This module exists to answer one question:
 
 ```
-<<<<<<< HEAD
-"What does the system think is happening?"
-```
-
-without allowing that answer to become reality.
-
-If this layer fails,
-the architecture stops learning
-and starts hallucinating.
-
-Version: 7.56.8
-Status: ACTIVE
-=======
 "What is being talked about?"
 ```
 
@@ -155,7 +99,6 @@ before attempting to answer:
 
 Version: 7.57.0
 Status: DATA COLLECTION PHASE
->>>>>>> da57108 (fix: observation deduplication via fingerprint uniqueness)
 Contract: LOCKED
 """
 """
