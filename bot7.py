@@ -182,6 +182,7 @@ Event
 LOCKED UNTIL FURTHER NOTICE.
 ───────────────────────────────────────────────────────────────
 """
+
 import os
 import re
 import time
@@ -198,21 +199,13 @@ import uuid
 import unicodedata
 from enum import Enum
 from dataclasses import dataclass, field, asdict
-<<<<<<< HEAD
-from typing import Optional, Callable, Any, List, Dict, TypedDict
-=======
 from typing import Optional, Callable, Any, List, Dict, TypedDict, Tuple
->>>>>>> da57108 (fix: observation deduplication via fingerprint uniqueness)
 from flask import Flask, request, jsonify
 import requests
 from dotenv import load_dotenv
 import traceback
-<<<<<<< HEAD
-
-=======
 from abc import ABC, abstractmethod
 from rank_bm25 import BM25Okapi
->>>>>>> da57108 (fix: observation deduplication via fingerprint uniqueness)
 load_dotenv()
 
 # ==================== TIMING HELPER ====================
@@ -1261,11 +1254,7 @@ _audit_system = PredictionAuditSystem()
 
 # ╔═══════════════════════════════════════════════════════════════╗
 # ║  7.57: MINIMAL VIABLE SUBSTRATE (EVIDENCE ONLY)               ║
-<<<<<<< HEAD
-# ║  1 Table. 2 Methods. No philosophy.                          ║
-=======
 # ║  1 Table. 2 Methods. No philosophy.                           ║
->>>>>>> da57108 (fix: observation deduplication via fingerprint uniqueness)
 # ╚═══════════════════════════════════════════════════════════════╝
 
 class MemoryOS:
@@ -1283,32 +1272,6 @@ class MemoryOS:
             sender_id TEXT NOT NULL,
             timestamp REAL NOT NULL,
             raw_text TEXT NOT NULL,
-<<<<<<< HEAD
-            fingerprint TEXT NOT NULL,
-            source TEXT DEFAULT 'messenger',
-            created_at REAL NOT NULL
-        )""")
-        # Index for geological time queries
-        c.execute("CREATE INDEX IF NOT EXISTS idx_mos_obs_sender_time ON mos_observations(sender_id, timestamp)")
-        # Index for debug queries (WHERE sender_id=? ORDER BY id DESC)
-        c.execute("CREATE INDEX IF NOT EXISTS idx_mos_obs_sender_id ON mos_observations(sender_id, id)")
-        conn.commit(); conn.close()
-
-    def append_observation(self, sender_id: str, raw_text: str, timestamp: float = None) -> int:
-        """The only write path to memory."""
-        if timestamp is None: timestamp = time.time()
-        
-        # Row fingerprint for debugging/dedup analysis
-        fingerprint = hashlib.sha256(f"{sender_id}|{timestamp}|{raw_text}".encode('utf-8')).hexdigest()
-        
-        conn = sqlite3.connect(self.db_path, timeout=DB_TIMEOUT, check_same_thread=False)
-        c = conn.cursor()
-        c.execute("""INSERT INTO mos_observations 
-            (sender_id, timestamp, raw_text, fingerprint, created_at) 
-            VALUES (?, ?, ?, ?, ?)""",
-            (sender_id, timestamp, raw_text, fingerprint, time.time()))
-        obs_id = c.lastrowid
-=======
             fingerprint TEXT NOT NULL UNIQUE,
             content_hash TEXT NOT NULL,
             source TEXT DEFAULT 'messenger',
@@ -1340,7 +1303,6 @@ class MemoryOS:
         else:
             c.execute("SELECT id FROM mos_observations WHERE fingerprint=?", (fingerprint,))
             obs_id = c.fetchone()[0]
->>>>>>> da57108 (fix: observation deduplication via fingerprint uniqueness)
         conn.commit(); conn.close()
         return obs_id
 
@@ -1348,12 +1310,6 @@ class MemoryOS:
         """The only read path for debugging."""
         conn = sqlite3.connect(self.db_path, timeout=DB_TIMEOUT, check_same_thread=False)
         c = conn.cursor()
-<<<<<<< HEAD
-        c.execute("SELECT id, timestamp, raw_text FROM mos_observations WHERE sender_id=? ORDER BY id DESC LIMIT ?", (sender_id, limit))
-        rows = c.fetchall()
-        conn.close()
-        return [{"id": r[0], "timestamp": r[1], "text": r[2]} for r in reversed(rows)]
-=======
         c.execute("SELECT id, timestamp, raw_text, metadata_json FROM mos_observations WHERE sender_id=? ORDER BY id DESC LIMIT ?", (sender_id, limit))
         rows = c.fetchall()
         conn.close()
@@ -1363,13 +1319,10 @@ class MemoryOS:
             except: meta = {}
             obs_list.append({"id": r[0], "timestamp": r[1], "text": r[2], "metadata": meta})
         return obs_list
->>>>>>> da57108 (fix: observation deduplication via fingerprint uniqueness)
 
 _mem_os = MemoryOS(DB_PATH)
 
 # ╔═══════════════════════════════════════════════════════════════╗
-<<<<<<< HEAD
-=======
 # ║  LAYER 1.5: ENTITY REGISTRY & MENTION (PRODUCTION-READY)       ║
 # ╚═══════════════════════════════════════════════════════════════╝
 
@@ -1742,7 +1695,6 @@ class BM25Retriever:
 _bm25_retriever = BM25Retriever(store=SqliteObservationStore())
 
 # ╔═══════════════════════════════════════════════════════════════╗
->>>>>>> da57108 (fix: observation deduplication via fingerprint uniqueness)
 # ║  7.56: FORWARD & BACKWARD SPINE                               ║
 # ╚═══════════════════════════════════════════════════════════════╝
 
@@ -2907,15 +2859,6 @@ def log_surprise(sender_id: str, graph_thought: str, reality: str, error_score: 
     }
     log.warning(f"[SURPRISE] {json.dumps(entry, ensure_ascii=False)}")
 
-<<<<<<< HEAD
-def call_groq_ai(sender_id: str, user_message: str):
-    intent = detect_intent(user_message)
-
-    update_user_state(sender_id, user_message)
-
-    # 7.57: APPEND TO MEMORY OS (TRUTH)
-    _mem_os.append_observation(sender_id, user_message)
-=======
 def call_groq_ai(sender_id: str, user_message: str, metadata: dict = None):
     intent = detect_intent(user_message)
     update_user_state(sender_id, user_message)
@@ -2943,7 +2886,6 @@ def call_groq_ai(sender_id: str, user_message: str, metadata: dict = None):
                 context_text=user_message
             )
     threading.Thread(target=_run_mention_pipeline, daemon=True).start()
->>>>>>> da57108 (fix: observation deduplication via fingerprint uniqueness)
 
     # 1. BACKWARD SPINE (Resolve previous prediction)
     graph = get_user_graph(sender_id)
@@ -2965,10 +2907,6 @@ def call_groq_ai(sender_id: str, user_message: str, metadata: dict = None):
     log_spine(sender_id, ctx, user_message)
     
     # 3. PROMPT & LLM
-<<<<<<< HEAD
-    # (Đã xóa đoạn lấy archaeology_context, ta để system prompt sạch như bản gốc)
-=======
->>>>>>> da57108 (fix: observation deduplication via fingerprint uniqueness)
     system = build_system_prompt_v756(sender_id, user_message, ctx)
         
     save_message(sender_id, "user", user_message)
@@ -2979,10 +2917,6 @@ def call_groq_ai(sender_id: str, user_message: str, metadata: dict = None):
     # 4. REGISTER PREDICTION & SAVE EXPERIENCE
     exp_id = log_experience(sender_id, user_message, intent, ai_text)
     
-<<<<<<< HEAD
-    # CẦN LƯU features_json VÀO experiences ĐỂ SAU NÀY ARCHAEOLOGY ĐỌC
-=======
->>>>>>> da57108 (fix: observation deduplication via fingerprint uniqueness)
     conn = sqlite3.connect(DB_PATH, timeout=DB_TIMEOUT, check_same_thread=False)
     conn.execute("UPDATE experiences SET features_json=? WHERE id=?", (json.dumps(ctx.perception.get("features", {})), exp_id))
     conn.commit(); conn.close()
@@ -3806,14 +3740,6 @@ def ambient_api():
     conn = sqlite3.connect(DB_PATH, timeout=DB_TIMEOUT, check_same_thread=False)
     c = conn.cursor()
 
-<<<<<<< HEAD
-    c.execute("SELECT artifact_id FROM tension_artifacts WHERE sender_id=? ORDER BY last_seen DESC LIMIT 1", (sender_id,))
-    row = c.fetchone()
-    if row:
-        artifact_glimpse = "có một điều vẫn chưa khép lại."
-
-=======
->>>>>>> da57108 (fix: observation deduplication via fingerprint uniqueness)
     c.execute("SELECT hypothesis_claim FROM prediction_audit WHERE sender_id=? AND resolved_at IS NULL ORDER BY created_at DESC LIMIT 1", (sender_id,))
     row = c.fetchone()
     if row:
@@ -3868,12 +3794,6 @@ def status_api():
     c.execute("SELECT COUNT(*) FROM experiences")
     exp_count = c.fetchone()[0]
 
-<<<<<<< HEAD
-    c.execute("SELECT COUNT(*) FROM tension_artifacts")
-    art_count = c.fetchone()[0]
-
-=======
->>>>>>> da57108 (fix: observation deduplication via fingerprint uniqueness)
     c.execute("SELECT COUNT(*) FROM prediction_audit WHERE resolved_at IS NULL")
     open_preds = c.fetchone()[0]
 
@@ -3882,18 +3802,10 @@ def status_api():
 
     conn.close()
 
-<<<<<<< HEAD
-    birth_date_str = os.environ.get("BIRTH_DATE", "2024-01-01")
-
-    return jsonify({
-        "experience_count": exp_count,
-        "artifact_count": art_count,
-=======
     birth_date_str = os.environ.get("BIRTH_DATE", "2026-06-06")
 
     return jsonify({
         "experience_count": exp_count,
->>>>>>> da57108 (fix: observation deduplication via fingerprint uniqueness)
         "open_predictions": open_preds,
         "failed_predictions": failed_preds,
         "birth_date": birth_date_str
@@ -3908,24 +3820,17 @@ def chat_api():
     data = request.json
     sender_id = data.get("sender_id", "admin_tester")
     user_text = data.get("text", "")
-<<<<<<< HEAD
-=======
     turn_uid = data.get("turn_uid") # Lấy từ benchmark
     
->>>>>>> da57108 (fix: observation deduplication via fingerprint uniqueness)
     if not user_text:
         return jsonify({"error": "No text"}), 400
 
     try:
-<<<<<<< HEAD
-        response_text, ctx = call_groq_ai(sender_id, user_text)
-=======
         # Đóng gói turn_uid vào metadata
         meta = {"turn_uid": turn_uid} if turn_uid else None
         
         # Gọi call_groq_ai 1 lần duy nhất, truyền metadata xuống DB
         response_text, ctx = call_groq_ai(sender_id, user_text, metadata=meta)
->>>>>>> da57108 (fix: observation deduplication via fingerprint uniqueness)
 
         entropy = ctx.worldview.get("worldview_entropy", 0.5)
         abstract_mems = get_abstract_memories(sender_id)
@@ -3956,8 +3861,6 @@ def chat_api():
         })
     except Exception as e:
         return jsonify({"error": str(e)}), 500
-<<<<<<< HEAD
-=======
 
 @app.route("/api/retrieve", methods=["POST"])
 def retrieve_api():
@@ -3975,7 +3878,6 @@ def retrieve_api():
         
     results = _bm25_retriever.retrieve(sender_id, query, k=k)
     return jsonify({"results": results})
->>>>>>> da57108 (fix: observation deduplication via fingerprint uniqueness)
 
 @app.route("/", methods=["GET"])
 def verify():
@@ -4095,11 +3997,6 @@ def schedule_follow_up(sender_id: str):
     follow_up_timers[sender_id] = timer
 
 if __name__ == "__main__":
-<<<<<<< HEAD
-    os.makedirs(GRAPHS_DIR, exist_ok=True)
-    log.info("Mind v7.56.8 — The Cognitive Spine Running...")
-    app.run(host="0.0.0.0", port=5000, debug=False)
-=======
     import sys
     if "--benchmark" in sys.argv:
         verify_gold_spans()
@@ -4110,4 +4007,3 @@ if __name__ == "__main__":
         os.makedirs(GRAPHS_DIR, exist_ok=True)
         log.info("Mind v7.56.8 — The Cognitive Spine Running...")
         app.run(host="0.0.0.0", port=5000, debug=False)
->>>>>>> da57108 (fix: observation deduplication via fingerprint uniqueness)
