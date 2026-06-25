@@ -1323,7 +1323,7 @@ class MemoryOS:
 _mem_os = MemoryOS(DB_PATH)
 
 # ╔═══════════════════════════════════════════════════════════════╗
-# ║  LAYER 1.5: ENTITY REGISTRY & MENTION (PRODUCTION-READY)       ║
+# ║  LAYER 1.5: ENTITY REGISTRY & MENTION (PRODUCTION-READY)      ║
 # ╚═══════════════════════════════════════════════════════════════╝
 
 def normalize_surface(text: str) -> str:
@@ -1347,13 +1347,33 @@ class EntityRegistry:
             alias TEXT NOT NULL, entity_id TEXT NOT NULL, confidence REAL DEFAULT 1.0, created_at REAL NOT NULL, PRIMARY KEY (alias, entity_id)
         )""")
         c.execute("""CREATE TABLE IF NOT EXISTS mos_entity_mentions (
-            mention_id INTEGER PRIMARY KEY AUTOINCREMENT, observation_id INTEGER NOT NULL, entity_id TEXT, surface_form TEXT NOT NULL, start_char INTEGER, end_char INTEGER, created_at REAL NOT NULL
+            mention_id INTEGER PRIMARY KEY AUTOINCREMENT, observation_id INTEGER NOT NULL, entity_id TEXT, surface_form TEXT NOT NULL, normalized_surface TEXT NOT NULL, start_char INTEGER, end_char INTEGER, created_at REAL NOT NULL
         )""")
+        # Idempotent: add column to existing DBs
+        # Idempotent: add column to existing DBs
+        try: c.execute("ALTER TABLE mos_entity_mentions ADD COLUMN normalized_surface TEXT")
+        except: pass
+        c.execute("CREATE INDEX IF NOT EXISTS idx_mentions_obs_norm ON mos_entity_mentions(observation_id, normalized_surface)")
+        
+        # Backfill NULL normalized_surface for existing rows
+        # Dùng LOWER(TRIM()) của SQLite làm approximation tốt nhất cho data cũ
+        c.execute("UPDATE mos_entity_mentions SET normalized_surface = LOWER(TRIM(surface_form)) WHERE normalized_surface IS NULL")
         c.execute("CREATE INDEX IF NOT EXISTS idx_mentions_obs ON mos_entity_mentions(observation_id)")
         c.execute("CREATE INDEX IF NOT EXISTS idx_mentions_entity ON mos_entity_mentions(entity_id)")
         c.execute("""CREATE TABLE IF NOT EXISTS mos_entity_candidates (
-            normalized_surface TEXT PRIMARY KEY, count INTEGER DEFAULT 1, sample_context TEXT, first_seen REAL NOT NULL, last_seen REAL NOT NULL
+            normalized_surface TEXT PRIMARY KEY, count INTEGER DEFAULT 1, sample_context TEXT, first_seen REAL NOT NULL, last_seen REAL NOT NULL,
+            distinct_observations INTEGER DEFAULT 1, distinct_days INTEGER DEFAULT 1,
+            left_context TEXT, right_context TEXT
         )""")
+        # Idempotent: add columns to existing DBs
+        for ddl in [
+            "ALTER TABLE mos_entity_candidates ADD COLUMN distinct_observations INTEGER DEFAULT 1",
+            "ALTER TABLE mos_entity_candidates ADD COLUMN distinct_days INTEGER DEFAULT 1",
+            "ALTER TABLE mos_entity_candidates ADD COLUMN left_context TEXT",
+            "ALTER TABLE mos_entity_candidates ADD COLUMN right_context TEXT",
+        ]:
+            try: c.execute(ddl)
+            except: pass
         c.execute("""CREATE TABLE IF NOT EXISTS mos_extraction_audit (
             id INTEGER PRIMARY KEY AUTOINCREMENT, observation_id INTEGER NOT NULL, extractor_version TEXT NOT NULL, dict_count INTEGER DEFAULT 0, llm_count INTEGER DEFAULT 0, total_count INTEGER DEFAULT 0, runtime_ms INTEGER DEFAULT 0, created_at REAL NOT NULL
         )""")
@@ -1364,12 +1384,45 @@ class EntityRegistry:
         entity_id = self.get_entity_id(norm_surface)
         conn = sqlite3.connect(self.db_path, timeout=DB_TIMEOUT, check_same_thread=False)
         c = conn.cursor()
-        c.execute("""INSERT INTO mos_entity_mentions (observation_id, entity_id, surface_form, start_char, end_char, created_at) VALUES (?, ?, ?, ?, ?, ?)""",
-            (observation_id, entity_id, surface_form, start_char, end_char, time.time()))
+        
+        c.execute("SELECT 1 FROM mos_entity_mentions WHERE observation_id=? AND normalized_surface=? LIMIT 1", (observation_id, norm_surface))
+        is_new_observation = c.fetchone() is None
+        
+        # Insert mention
+        c.execute("""INSERT INTO mos_entity_mentions (observation_id, entity_id, surface_form, normalized_surface, start_char, end_char, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)""",
+            (observation_id, entity_id, surface_form, norm_surface, start_char, end_char, time.time()))
+        
         if not entity_id:
-            c.execute("""INSERT INTO mos_entity_candidates (normalized_surface, count, sample_context, first_seen, last_seen) VALUES (?, 1, ?, ?, ?)
-                         ON CONFLICT(normalized_surface) DO UPDATE SET count = count + 1, last_seen = ?""",
-                      (norm_surface, context_text[:100], time.time(), time.time(), time.time()))
+            # Check if candidate exists
+            c.execute("SELECT last_seen FROM mos_entity_candidates WHERE normalized_surface=?", (norm_surface,))
+            row = c.fetchone()
+            now = time.time()
+            
+            # Extract left/right context (20 chars each side)
+            left_ctx = context_text[max(0, start_char - 20):start_char].strip()
+            right_ctx = context_text[end_char:min(len(context_text), end_char + 20)].strip()
+            
+            if row:
+                # Check if new day
+                last_date = datetime.datetime.fromtimestamp(row[0]).date()
+                today_date = datetime.datetime.now().date()
+                is_new_day = last_date != today_date
+                
+                c.execute("""UPDATE mos_entity_candidates 
+                             SET count = count + 1, last_seen = ?, 
+                                 distinct_observations = distinct_observations + ?,
+                                 distinct_days = distinct_days + ?,
+                                 left_context = COALESCE(left_context, ?),
+                                 right_context = COALESCE(right_context, ?)
+                             WHERE normalized_surface = ?""",
+                          (now, 1 if is_new_observation else 0, 1 if is_new_day else 0, left_ctx, right_ctx, norm_surface))
+            else:
+                # New candidate
+                c.execute("""INSERT INTO mos_entity_candidates 
+                             (normalized_surface, count, sample_context, first_seen, last_seen, distinct_observations, distinct_days, left_context, right_context) 
+                             VALUES (?, 1, ?, ?, ?, 1, 1, ?, ?)""",
+                          (norm_surface, context_text[:100], now, now, left_ctx, right_ctx))
+        
         conn.commit(); conn.close()
         return entity_id
 
@@ -1401,28 +1454,67 @@ class EntityRegistry:
 
 _entity_registry = EntityRegistry(DB_PATH)
 
+class CandidateDiscovery:
+    """LVL 1: Heuristic Entity Discovery. Vietnamese-friendly patterns."""
+    PATTERNS = [
+        r'\b[A-Z][a-z]+(?:[A-Z][a-z]+)+\b',  # PascalCase (MemoryOS, FastAPI)
+        r'\b[A-Z]{2,5}\b',                    # Acronym (AI, BM25, SQL)
+        r'\b[A-Z][a-z]{2,20}\b',              # Single Capitalized Word (Docker, Redis)
+        r'\b[A-Za-z]+[-_][A-Za-z]+\b',        # Hyphen/Snake (Cognitive-Spine)
+    ]
+    # Minimal Vietnamese stopword list (sentence starters, time words, common nouns)
+    STOPWORDS = {"Hôm", "Qua", "Đang", "Sẽ", "Đã", "Vừa", "Nhưng", "Thì", "Cái", "Mấy", "Nhiều", "Tốt", "Vui", "Buồn",
+                 "Con", "Thằng", "Mày", "Tao", "À", "Ừ", "Trời", "Chưa", "Đi", "Nghỉ", "Bug", "Code", "Mẹ", "Ba", "Anh",
+                 "Chị", "Ông", "Bà", "Cô", "Chú", "Hai", "Ba", "Bốn", "Năm", "Sáu", "Bảy", "Tám", "Chín", "Mười",
+                 "Thứ", "Chủ", "Nhật", "Tuần", "Tháng", "Năm", "Quý", "Hôm", "Mai", "Kia", "Nay", "Qua", "Tới"}
+
+    def __init__(self):
+        self.compiled = [re.compile(p) for p in self.PATTERNS]
+
+    def extract(self, text: str) -> list[dict]:
+        mentions = []
+        seen_spans = set()
+        for pattern in self.compiled:
+            for match in pattern.finditer(text):
+                surface = match.group(0)
+                start, end = match.start(), match.end()
+                if surface in self.STOPWORDS or len(surface) < 2:
+                    continue
+                if not any(s <= start < e or s < end <= e for s, e in seen_spans):
+                    mentions.append({"surface": surface, "start": start, "end": end})
+                    seen_spans.add((start, end))
+        return mentions
+
+
 class MentionExtractor:
+    """7.57.2: Recognition (Dict+LLM) separated from Discovery (Regex). NO PROMOTION."""
+
     FALLBACK_DICT = {"tuệ mẫn", "dead cells", "python", "sqlite", "ai"}
-    
+
     def __init__(self, router: 'ProviderRouter', registry: 'EntityRegistry', use_llm: bool = True):
         self.router = router
         self.registry = registry
         self.use_llm = use_llm
-        self.version = "hybrid_v1.1_FROZEN" if use_llm else "dict_only_v1.1"
-        
-    def extract(self, text: str) -> tuple[dict, list[dict]]:
+        self.discoverer = CandidateDiscovery()
+        self.version = "hybrid_v1.6_CONTEXT_DISCOVERY" if use_llm else "dict_only_v1.6"
+
+    def extract_recognition(self, text: str) -> tuple[dict, list[dict]]:
+        """Recognition only: Dict + LLM. Used for benchmark."""
         t_start = time.perf_counter()
         dict_count = 0
         llm_count = 0
         mentions = []
-        
+
+        # Pass 1: Dictionary (Known Entities)
         aliases = self.registry.get_all_aliases()
-        if not aliases: aliases = list(self.FALLBACK_DICT)
+        if not aliases:
+            aliases = list(self.FALLBACK_DICT)
         for term in aliases:
             for match in re.finditer(re.escape(term), text, re.IGNORECASE):
                 mentions.append({"surface": match.group(0), "start": match.start(), "end": match.end(), "source": "dict"})
                 dict_count += 1
-                
+
+        # Pass 2: LLM (Complex Entities)
         if self.use_llm:
             llm_mentions = self._llm_extract(text)
             existing_spans = {(m["start"], m["end"]) for m in mentions}
@@ -1432,22 +1524,51 @@ class MentionExtractor:
                     mentions.append(m)
                     existing_spans.add((m["start"], m["end"]))
                     llm_count += 1
-                
+
         mentions.sort(key=lambda x: x["start"])
         runtime_ms = int((time.perf_counter() - t_start) * 1000)
-        return {"dict_count": dict_count, "llm_count": llm_count, "total_count": len(mentions), "runtime_ms": runtime_ms}, mentions
-        
+        metrics = {
+            "dict_count": dict_count,
+            "llm_count": llm_count,
+            "total_count": len(mentions),
+            "runtime_ms": runtime_ms
+        }
+        return metrics, mentions
+
+    def discover_candidates(self, text: str, recognized_spans: set = None) -> list[dict]:
+        """Discovery only: Regex candidates not in registry and not already recognized."""
+        if recognized_spans is None:
+            recognized_spans = set()
+
+        aliases = self.registry.get_all_aliases()
+        if not aliases:
+            aliases = list(self.FALLBACK_DICT)
+        known_aliases = {normalize_surface(a) for a in aliases}
+
+        disc_mentions = self.discoverer.extract(text)
+        disc_filtered = []
+        for m in disc_mentions:
+            if (m["start"], m["end"]) not in recognized_spans:
+                if normalize_surface(m["surface"]) not in known_aliases:
+                    disc_filtered.append(m)
+        return disc_filtered
+
     def _llm_extract(self, text: str) -> list[dict]:
-        system = """You are a Mention Extractor. Extract all proper nouns, specific concepts, projects, tools, or entities from the text. Return ONLY a JSON list of strings (the exact surface forms). Example: Text: "Tao vừa sửa bug trong Tuệ Mẫn." Output: ["Tuệ Mẫn"]"""
+        system = """You are a Mention Extractor.
+Extract all proper nouns, specific concepts, projects, tools, or entities from the text.
+DO NOT extract pronouns (I, you, he, she, it, tao, mày). DO NOT extract common nouns (bug, code, game).
+Return ONLY a JSON list of strings (the exact surface forms).
+"""
         try:
-            raw = self.router.generate(system, [{"role": "user", "content": text}], max_tokens=128)
+            raw = self.router.generate(system, [{"role": "user", "content": text}], max_tokens=100)
             surfaces = json.loads(raw.replace("```json", "").replace("```", "").strip())
             results = []
             for surface in surfaces:
-                for match in re.finditer(re.escape(surface), text):
+                for match in re.finditer(re.escape(surface), text, re.IGNORECASE):
                     results.append({"surface": match.group(0), "start": match.start(), "end": match.end()})
             return results
-        except: return []
+        except:
+            return []
 
 _mention_extractor = MentionExtractor(_router, _entity_registry)
 
@@ -1474,8 +1595,88 @@ GOLD_MENTIONS_TEST = [
     {"text": "Tao đang đọc về Ontology và Cognitive Spine", "surfaces": ["Ontology", "Cognitive Spine"]},
     {"text": "Mày là AI mà không biết AI là gì à", "surfaces": ["AI", "AI"]},
     {"text": "Tao vừa deploy lên production", "surfaces": []},
-    {"text": "BeliefSystem v2 sẽ dùng Evidence thay vì Belief", "surfaces": ["BeliefSystem"]},
-    {"text": "Tao ghét production mindset", "surfaces": []}
+    {"text": "BeliefSystem v2 sẽ dùng Evidence thay vì Belief", "surfaces": ["BeliefSystem", "Evidence", "Belief"]},
+    {"text": "Tao ghét production mindset", "surfaces": []},
+    {"text": "Tao đang học Elixir", "surfaces": ["Elixir"]},
+    {"text": "Tao vừa cài Fedora lên máy bàn", "surfaces": ["Fedora"]},
+    {"text": "Tao xử lý queue bằng Celery kết hợp Redis", "surfaces": ["Celery", "Redis"]},
+    {"text": "FastAPI với Pydantic validate data khá chặt", "surfaces": ["FastAPI", "Pydantic"]},
+    {"text": "Java chạy chậm hơn JavaScript dù tên giống nhau", "surfaces": ["Java", "JavaScript"]},
+    {"text": "Tao restart Nginx vì Nginx bị treo", "surfaces": ["Nginx", "Nginx"]},
+    {"text": "Tao đói bụng quá đi ăn đã", "surfaces": []},
+    {"text": "Trời hôm nay mát thật, dễ chịu", "surfaces": []},
+    {"text": "Tesla tăng trưởng mạnh quý này", "surfaces": ["Tesla"]},
+    {"text": "Tao đang benchmark BM25 cho Tuệ Mẫn", "surfaces": ["BM25", "Tuệ Mẫn"]},
+    {"text": "Redis chạy nhẹ hơn tao tưởng", "surfaces": ["Redis"]},
+    {"text": "Con Docker này set up hơi lâu", "surfaces": ["Docker"]},
+    {"text": "Tao dùng React với TypeScript cho frontend", "surfaces": ["React", "TypeScript"]},
+    {"text": "FastAPI nhanh hơn Flask nhưng Django đủ tool hơn", "surfaces": ["FastAPI", "Flask", "Django"]},
+    {"text": "Docker container chạy trong Docker daemon", "surfaces": ["Docker", "Docker"]},
+    {"text": "Con quái này đánh hoài không chết", "surfaces": []},
+    {"text": "Tao buồn ngủ quá rồi", "surfaces": []},
+    {"text": "Oracle là tên cũ tao từng nghe ở trường", "surfaces": ["Oracle"]},
+    {"text": "Amazon mở thêm kho hàng mới", "surfaces": ["Amazon"]},
+    {"text": "BeliefSystem sẽ đọc từ Cognitive Spine", "surfaces": ["BeliefSystem", "Cognitive Spine"]},
+    {"text": "Tao mới update Neovim", "surfaces": ["Neovim"]},
+    {"text": "Kubernetes phức tạp vl", "surfaces": ["Kubernetes"]},
+    {"text": "Redis cache trước khi query PostgreSQL", "surfaces": ["Redis", "PostgreSQL"]},
+    {"text": "Tao build pipeline bằng GitHub Actions kết hợp Docker", "surfaces": ["GitHub Actions", "Docker"]},
+    {"text": "React và React Native dùng chung core", "surfaces": ["React", "React Native"]},
+    {"text": "Tao so sánh Node với Node.js LTS", "surfaces": ["Node", "Node.js"]},
+    {"text": "Mai t có hẹn đi cà phê", "surfaces": []},
+    {"text": "Production hôm nay im ru, không có gì cháy", "surfaces": []},
+    {"text": "Apple để trên bàn từ sáng tới giờ", "surfaces": ["Apple"]},
+    {"text": "Memory OS của Tuệ Mẫn dùng SQLite làm storage layer", "surfaces": ["Memory OS", "Tuệ Mẫn", "SQLite"]},
+    {"text": "Tao đang đọc doc của FastAPI", "surfaces": ["FastAPI"]},
+    {"text": "Golang viết binary nhẹ thật", "surfaces": ["Golang"]},
+    {"text": "Nginx proxy ngược vào Gunicorn rồi tới Django", "surfaces": ["Nginx", "Gunicorn", "Django"]},
+    {"text": "Tao so sánh Elasticsearch với Solr xem cái nào nhanh hơn", "surfaces": ["Elasticsearch", "Solr"]},
+    {"text": "PostgreSQL 14 chậm hơn PostgreSQL 16", "surfaces": ["PostgreSQL 14", "PostgreSQL 16"]},
+    {"text": "Tao deploy xong rồi đi ngủ luôn", "surfaces": []},
+    {"text": "Sáng nay dậy muộn vì thức khuya code", "surfaces": []},
+    {"text": "Mercury đang ở gần Mặt Trời nhất", "surfaces": ["Mercury"]},
+    {"text": "Tao vừa mua con Shark hút bụi", "surfaces": ["Shark"]},
+    {"text": "Tao đang refactor Ontology cho Cognitive Spine", "surfaces": ["Ontology", "Cognitive Spine"]},
+    {"text": "Tao deploy thử Nginx", "surfaces": ["Nginx"]},
+    {"text": "MongoDB lúc trước tao dùng cũng được", "surfaces": ["MongoDB"]},
+    {"text": "Terraform provision hạ tầng trên AWS", "surfaces": ["Terraform", "AWS"]},
+    {"text": "Webpack với Babel hay bị conflict version", "surfaces": ["Webpack", "Babel"]},
+    {"text": "Vue 2 với Vue 3 khác nhau khá nhiều", "surfaces": ["Vue 2", "Vue 3"]},
+    {"text": "TypeScript build ra JavaScript rồi JavaScript chạy trên browser", "surfaces": ["TypeScript", "JavaScript", "JavaScript"]},
+    {"text": "Trễ giờ họp rồi, chạy thôi", "surfaces": []},
+    {"text": "Tao ghét mấy cái meeting vô bổ", "surfaces": []},
+    {"text": "Windows mở ra đón gió mát", "surfaces": ["Windows"]},
+    {"text": "Evidence trong BeliefSystem v2 thay cho Belief cũ", "surfaces": ["Evidence", "BeliefSystem", "Belief"]},
+    {"text": "Tao đang fix lỗi trong Webpack", "surfaces": ["Webpack"]},
+    {"text": "TypeScript giúp code an toàn hơn", "surfaces": ["TypeScript"]},
+    {"text": "Tao migrate từ MySQL sang PostgreSQL", "surfaces": ["MySQL", "PostgreSQL"]},
+    {"text": "Kafka đẩy message qua cho Spark xử lý", "surfaces": ["Kafka", "Spark"]},
+    {"text": "Kubernetes với Kubernetes Operator là hai khái niệm khác nhau", "surfaces": ["Kubernetes", "Kubernetes Operator"]},
+    {"text": "Bug hôm qua tự nhiên hết luôn không hiểu sao", "surfaces": []},
+    {"text": "Tao với đồng nghiệp đi ăn trưa", "surfaces": []},
+    {"text": "Python cuốn quanh cành cây ngoài vườn", "surfaces": ["Python"]},
+    {"text": "Jaguar chạy êm hơn tao nghĩ", "surfaces": ["Jaguar"]},
+    {"text": "Tuệ Mẫn vừa update extractor mention layer 1.5", "surfaces": ["Tuệ Mẫn"]},
+    {"text": "Tao thử cài Vim lại từ đầu", "surfaces": ["Vim"]},
+    {"text": "GraphQL hơi khó học lúc đầu", "surfaces": ["GraphQL"]},
+    {"text": "Vue và Svelte đều nhẹ hơn React", "surfaces": ["Vue", "Svelte", "React"]},
+    {"text": "Tao train model bằng PyTorch rồi export ONNX", "surfaces": ["PyTorch", "ONNX"]},
+    {"text": "Redis Cluster phức tạp hơn Redis bình thường", "surfaces": ["Redis Cluster", "Redis"]},
+    {"text": "Git với Git LFS tao toàn nhầm", "surfaces": ["Git", "Git LFS"]},
+    {"text": "Server bữa nay load nặng vì traffic tăng", "surfaces": []},
+    {"text": "Tao nghĩ nên nghỉ sớm hôm nay", "surfaces": []},
+    {"text": "Mars sáng rực trên trời đêm nay", "surfaces": ["Mars"]},
+    {"text": "Tao đang viết test F1 cho mention extractor của Tuệ Mẫn", "surfaces": ["Tuệ Mẫn"]},
+    {"text": "Tao mới setup Terraform cho project", "surfaces": ["Terraform"]},
+    {"text": "Jenkins build dạo này hay fail", "surfaces": ["Jenkins"]},
+    {"text": "Prometheus scrape metric rồi Grafana vẽ dashboard", "surfaces": ["Prometheus", "Grafana"]},
+    {"text": "Tao set CI bằng Jenkins thay vì GitLab CI", "surfaces": ["Jenkins", "GitLab CI"]},
+    {"text": "MySQL 5.7 lên MySQL 8 đổi default charset", "surfaces": ["MySQL 5.7", "MySQL 8"]},
+    {"text": "Trời mưa nên tao ở nhà cả ngày", "surfaces": []},
+    {"text": "Code review hôm nay dài vl", "surfaces": []},
+    {"text": "Target hôm nay đông khách", "surfaces": ["Target"]},
+    {"text": "Shell tăng giá xăng tuần này", "surfaces": ["Shell"]},
+    {"text": "Cognitive Spine cần liên kết chặt với Memory OS", "surfaces": ["Cognitive Spine", "Memory OS"]},
 ]
 
 def auto_span(text: str, surface: str, start_from: int = 0) -> dict:
@@ -1530,7 +1731,7 @@ def run_benchmark(save_history: bool = True):
             text = item["text"]
             gold_surface = [normalize_surface(g["surface"]) for g in item["mentions"]]
             gold_span    = [(normalize_surface(g["surface"]), g["start"], g["end"]) for g in item["mentions"]]
-            _, mentions  = extractor.extract(text)
+            _, mentions  = extractor.extract_recognition(text)
             pred_surface = [normalize_surface(m["surface"]) for m in mentions]
             pred_span    = [(normalize_surface(m["surface"]), m["start"], m["end"]) for m in mentions]
             gold_s,  pred_s  = Counter(gold_surface), Counter(pred_surface)
@@ -1575,7 +1776,7 @@ def run_benchmark(save_history: bool = True):
     print("─" * 54)
     if hybrid_r["errors"]:
         print(f"  Hybrid errors ({min(5, len(hybrid_r['errors']))} of {len(hybrid_r['errors'])}):")
-        for e in hybrid_r["errors"][:5]:
+        for e in hybrid_r["errors"][:70]:
             print(f"    [{e['i']}] \"{e['text']}...\"")
             print(f"      Gold: {e['gold']}")
             print(f"      Pred: {e['pred']}")
@@ -2868,7 +3069,7 @@ def call_groq_ai(sender_id: str, user_message: str, metadata: dict = None):
 
     # LEVEL 1.5.2 & 1.5.3: MENTION EXTRACTION & LINKING
     def _run_mention_pipeline():
-        metrics, mentions = _mention_extractor.extract(user_message)
+        metrics, mentions = _mention_extractor.extract_recognition(user_message)
         _entity_registry.log_extraction_audit(
             observation_id=obs_id,
             extractor_version=_mention_extractor.version,
@@ -2877,7 +3078,20 @@ def call_groq_ai(sender_id: str, user_message: str, metadata: dict = None):
             total_count=metrics["total_count"],
             runtime_ms=metrics["runtime_ms"]
         )
+        recognized_spans = set()
         for m in mentions:
+            _entity_registry.link_mention(
+                observation_id=obs_id,
+                surface_form=m["surface"],
+                start_char=m["start"],
+                end_char=m["end"],
+                context_text=user_message
+            )
+            recognized_spans.add((m["start"], m["end"]))
+
+        # Discovery: candidates not in registry
+        disc_mentions = _mention_extractor.discover_candidates(user_message, recognized_spans)
+        for m in disc_mentions:
             _entity_registry.link_mention(
                 observation_id=obs_id,
                 surface_form=m["surface"],
@@ -3946,7 +4160,7 @@ def parse_messages(raw: str):
     return [p.strip() for p in raw.split("\n") if p.strip()][:4]
 
 def fix_pronoun_flip(text: str) -> str:
-    for verb in ["kệ", "nói", "kể tiếp", "nói tiếp", "đi ngủ", "nghỉ di", "thử đi", "xem đi", "đọc đi", "làm đi"]:
+    for verb in ["kệ", "nói", "kể tiếp", "nói tiếp", "đi ngủ", "nghỉ đi", "thử đi", "xem đi", "đọc đi", "làm đi"]:
         pattern = rf"(thoi\s+)em(\s+{re.escape(verb)}\s+di)"
         fixed = re.sub(pattern, rf"\1anh\2", text, flags=re.IGNORECASE)
         if fixed != text: return fixed
