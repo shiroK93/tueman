@@ -1,6 +1,6 @@
 """
 ╔═══════════════════════════════════════════════════════════════╗
-║                     TUỆ MẪN 7.57.0                            ║
+║                     TUỆ MẪN 7.57.2                            ║
 ║                THE MEMORY FOUNDATION (FROZEN)                 ║
 ╚═══════════════════════════════════════════════════════════════╝
 
@@ -103,81 +103,121 @@ Contract: LOCKED
 """
 """
 ───────────────────────────────────────────────────────────────
-7.57 ROADMAP (POST-FREEZE)
+7.57 ROADMAP (POST-LAYER 1.5 FREEZE)
 ───────────────────────────────────────────────────────────────
 
 COMPLETED
 ─────────
+✓ Observation Pipeline
 ✓ Mention Extraction Layer
+✓ Recognition / Discovery Separation
+✓ Candidate Discovery
+✓ Candidate Evidence Store
 ✓ Entity Registry
 ✓ Alias Resolution
 ✓ Entity Linking
+✓ Version-based Alias Cache
 ✓ BM25 Retrieval
 ✓ Benchmark Framework
 ✓ Gold Dataset Pipeline
-✓ Benchmark History Tracking
+✓ Benchmark History Framework
+✓ Production / Benchmark Decoupling
 
 IN PROGRESS
 ───────────
 [ ] Expand GOLD_MENTIONS_TEST
-Target: 20 → 50 → 100 → 200 samples
+Target:
+20 → 50 → 100 → 200 samples
 
-[ ] Build benchmark_history.json
-Track F1 evolution over time
+[ ] Benchmark stability verification
+Run repeated benchmark passes
+Verify deterministic results
 
-[ ] Verify benchmark stability
-Run multiple benchmark passes
-Ensure deterministic results
-
-HIGH PRIORITY FIXES
-───────────────────
-[ ] fingerprint UNIQUE constraint
-[ ] INSERT OR IGNORE for observations
+HIGH PRIORITY
+─────────────
+✓ fingerprint UNIQUE constraint
+✓ INSERT OR IGNORE for observations
 [ ] Duplicate fingerprint audit query
 
-MEDIUM PRIORITY FIXES
-─────────────────────
-[ ] LLM extraction IGNORECASE matching
-[ ] Alias cache invalidation hook
+MEDIUM PRIORITY
+───────────────
+✓ LLM extraction IGNORECASE helper
+✓ benchmark_history.json (version + TP/FP/FN per phase)
 [ ] BM25 cache size limit
 [ ] Observation retrieval pagination
+[ ] Replace INSERT OR REPLACE with
+ON CONFLICT ... DO UPDATE
+(preserve future metadata)
 
-RESEARCH QUESTIONS
-──────────────────
-[ ] What is dict-only Span F1 at 100 samples?
-[ ] What is hybrid Span F1 at 100 samples?
-[ ] How much F1 does LLM actually add?
-[ ] Which mention types fail most often?
-- Proper nouns?
-- Technologies?
-- Concepts?
-- Projects?
+BENCHMARK GOALS
+───────────────
+Recognition
+[ ] Dict-only Span F1 @100 samples
+[ ] Hybrid Span F1 @100 samples
+[ ] Dict vs Hybrid delta
+
+Discovery
+[ ] Raw Regex Precision / Recall
+[ ] Filtered Regex Precision / Recall
+
+Pipeline
+[ ] End-to-End Coverage F1
+[ ] Runtime scaling vs dataset size
+
+ERROR ANALYSIS
+──────────────
+[ ] Proper nouns
+[ ] Technologies
+[ ] Concepts
+[ ] Projects
+[ ] Multi-word entities
+[ ] Vietnamese capitalization edge cases
 
 UNLOCK CONDITIONS FOR LAYER 2
 ─────────────────────────────
-Minimum:
+
+Minimum
 Dataset ≥ 100 samples
 
-Preferred:
+Preferred
 Dataset ≥ 200 samples
 
-Required metrics:
-Span F1 ≥ 85%
-Stable across benchmark runs
+Required
+Recognition Span F1 ≥ 85%
+Discovery benchmark stable
+End-to-End benchmark stable
+Deterministic across repeated runs
 
-Only after these conditions are met:
+Only after these conditions are satisfied:
 
 Observation
-↓
+│
+▼
 Mention
-↓
+│
+▼
 Entity
-
-may be extended with:
-
-Entity
-↓
+│
+▼
 Event
+
+ARCHITECTURE STATUS
+───────────────────
+
+Layer 1.5
+STATUS: FROZEN
+
+Only:
+• Bug fixes
+• Performance improvements
+• Benchmark improvements
+
+No architectural expansion until Layer 2 begins.
+
+───────────────────────────────────────────────────────────────
+Target release:
+Mind v7.57.3 → Benchmark maturity
+Mind v7.58.x → Layer 2 (Event Graph)
 
 LOCKED UNTIL FURTHER NOTICE.
 ───────────────────────────────────────────────────────────────
@@ -197,6 +237,7 @@ import hmac
 import hashlib
 import uuid
 import unicodedata
+from collections.abc import Iterable
 from enum import Enum
 from dataclasses import dataclass, field, asdict
 from typing import Optional, Callable, Any, List, Dict, TypedDict, Tuple
@@ -207,6 +248,8 @@ import traceback
 from abc import ABC, abstractmethod
 from rank_bm25 import BM25Okapi
 load_dotenv()
+
+BOT_VERSION = "7.57.2"
 
 # ==================== TIMING HELPER ====================
 class _T:
@@ -1333,9 +1376,7 @@ class EntityRegistry:
     def __init__(self, db_path: str):
         self.db_path = db_path
         self._init_tables()
-        self._alias_cache = []
-        self._alias_cache_ts = 0
-        self._alias_cache_ttl = 300
+        self.version = 0  # NEW: Tăng mỗi khi alias thay đổi
         
     def _init_tables(self):
         conn = sqlite3.connect(self.db_path, timeout=DB_TIMEOUT, check_same_thread=False)
@@ -1349,23 +1390,16 @@ class EntityRegistry:
         c.execute("""CREATE TABLE IF NOT EXISTS mos_entity_mentions (
             mention_id INTEGER PRIMARY KEY AUTOINCREMENT, observation_id INTEGER NOT NULL, entity_id TEXT, surface_form TEXT NOT NULL, normalized_surface TEXT NOT NULL, start_char INTEGER, end_char INTEGER, created_at REAL NOT NULL
         )""")
-        # Idempotent: add column to existing DBs
-        # Idempotent: add column to existing DBs
         try: c.execute("ALTER TABLE mos_entity_mentions ADD COLUMN normalized_surface TEXT")
         except: pass
         c.execute("CREATE INDEX IF NOT EXISTS idx_mentions_obs_norm ON mos_entity_mentions(observation_id, normalized_surface)")
-        
-        # Backfill NULL normalized_surface for existing rows
-        # Dùng LOWER(TRIM()) của SQLite làm approximation tốt nhất cho data cũ
         c.execute("UPDATE mos_entity_mentions SET normalized_surface = LOWER(TRIM(surface_form)) WHERE normalized_surface IS NULL")
         c.execute("CREATE INDEX IF NOT EXISTS idx_mentions_obs ON mos_entity_mentions(observation_id)")
         c.execute("CREATE INDEX IF NOT EXISTS idx_mentions_entity ON mos_entity_mentions(entity_id)")
         c.execute("""CREATE TABLE IF NOT EXISTS mos_entity_candidates (
             normalized_surface TEXT PRIMARY KEY, count INTEGER DEFAULT 1, sample_context TEXT, first_seen REAL NOT NULL, last_seen REAL NOT NULL,
-            distinct_observations INTEGER DEFAULT 1, distinct_days INTEGER DEFAULT 1,
-            left_context TEXT, right_context TEXT
+            distinct_observations INTEGER DEFAULT 1, distinct_days INTEGER DEFAULT 1, left_context TEXT, right_context TEXT
         )""")
-        # Idempotent: add columns to existing DBs
         for ddl in [
             "ALTER TABLE mos_entity_candidates ADD COLUMN distinct_observations INTEGER DEFAULT 1",
             "ALTER TABLE mos_entity_candidates ADD COLUMN distinct_days INTEGER DEFAULT 1",
@@ -1388,26 +1422,20 @@ class EntityRegistry:
         c.execute("SELECT 1 FROM mos_entity_mentions WHERE observation_id=? AND normalized_surface=? LIMIT 1", (observation_id, norm_surface))
         is_new_observation = c.fetchone() is None
         
-        # Insert mention
         c.execute("""INSERT INTO mos_entity_mentions (observation_id, entity_id, surface_form, normalized_surface, start_char, end_char, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)""",
             (observation_id, entity_id, surface_form, norm_surface, start_char, end_char, time.time()))
         
         if not entity_id:
-            # Check if candidate exists
             c.execute("SELECT last_seen FROM mos_entity_candidates WHERE normalized_surface=?", (norm_surface,))
             row = c.fetchone()
             now = time.time()
-            
-            # Extract left/right context (20 chars each side)
             left_ctx = context_text[max(0, start_char - 20):start_char].strip()
             right_ctx = context_text[end_char:min(len(context_text), end_char + 20)].strip()
             
             if row:
-                # Check if new day
                 last_date = datetime.datetime.fromtimestamp(row[0]).date()
                 today_date = datetime.datetime.now().date()
                 is_new_day = last_date != today_date
-                
                 c.execute("""UPDATE mos_entity_candidates 
                              SET count = count + 1, last_seen = ?, 
                                  distinct_observations = distinct_observations + ?,
@@ -1417,7 +1445,6 @@ class EntityRegistry:
                              WHERE normalized_surface = ?""",
                           (now, 1 if is_new_observation else 0, 1 if is_new_day else 0, left_ctx, right_ctx, norm_surface))
             else:
-                # New candidate
                 c.execute("""INSERT INTO mos_entity_candidates 
                              (normalized_surface, count, sample_context, first_seen, last_seen, distinct_observations, distinct_days, left_context, right_context) 
                              VALUES (?, 1, ?, ?, ?, 1, 1, ?, ?)""",
@@ -1425,6 +1452,16 @@ class EntityRegistry:
         
         conn.commit(); conn.close()
         return entity_id
+
+    def add_alias(self, alias: str, entity_id: str, confidence: float = 1.0):
+        """Thêm alias mới. Chỉ hàm này mới bump version để invalidate cache."""
+        norm_alias = normalize_surface(alias)
+        conn = sqlite3.connect(self.db_path, timeout=DB_TIMEOUT, check_same_thread=False)
+        c = conn.cursor()
+        c.execute("INSERT OR REPLACE INTO mos_entity_aliases (alias, entity_id, confidence, created_at) VALUES (?, ?, ?, ?)",
+                  (norm_alias, entity_id, confidence, time.time()))
+        conn.commit(); conn.close()
+        self.version += 1  # Chỉ bump khi registry thực sự thay đổi
 
     def get_entity_id(self, norm_surface: str) -> Optional[str]:
         conn = sqlite3.connect(self.db_path, timeout=DB_TIMEOUT, check_same_thread=False)
@@ -1435,16 +1472,12 @@ class EntityRegistry:
         return row[0] if row else None
 
     def get_all_aliases(self) -> list[str]:
-        if time.time() - self._alias_cache_ts < self._alias_cache_ttl:
-            return self._alias_cache
         conn = sqlite3.connect(self.db_path, timeout=DB_TIMEOUT, check_same_thread=False)
         c = conn.cursor()
         c.execute("SELECT alias FROM mos_entity_aliases")
         rows = c.fetchall()
         conn.close()
-        self._alias_cache = [r[0] for r in rows]
-        self._alias_cache_ts = time.time()
-        return self._alias_cache
+        return [r[0] for r in rows]
 
     def log_extraction_audit(self, observation_id: int, extractor_version: str, dict_count: int, llm_count: int, total_count: int, runtime_ms: int):
         conn = sqlite3.connect(self.db_path, timeout=DB_TIMEOUT, check_same_thread=False)
@@ -1457,12 +1490,12 @@ _entity_registry = EntityRegistry(DB_PATH)
 class CandidateDiscovery:
     """LVL 1: Heuristic Entity Discovery. Vietnamese-friendly patterns."""
     PATTERNS = [
-        r'\b[A-Z][a-z]+(?:[A-Z][a-z]+)+\b',  # PascalCase (MemoryOS, FastAPI)
-        r'\b[A-Z]{2,5}\b',                    # Acronym (AI, BM25, SQL)
-        r'\b[A-Z][a-z]{2,20}\b',              # Single Capitalized Word (Docker, Redis)
-        r'\b[A-Za-z]+[-_][A-Za-z]+\b',        # Hyphen/Snake (Cognitive-Spine)
+        r'\b[A-Z][a-z]+(?:[A-Z][a-z]+)+\b',
+        r'\b[A-Z]{2,5}\b',
+        r'\b[A-Z][a-z]{2,20}\b',
+        r'\b[A-Z][A-Za-z0-9]*(?:\s[A-Z0-9][A-Za-z0-9]*)+\b',
+        r'\b[A-Za-z]+[-_][A-Za-z]+\b',
     ]
-    # Minimal Vietnamese stopword list (sentence starters, time words, common nouns)
     STOPWORDS = {"Hôm", "Qua", "Đang", "Sẽ", "Đã", "Vừa", "Nhưng", "Thì", "Cái", "Mấy", "Nhiều", "Tốt", "Vui", "Buồn",
                  "Con", "Thằng", "Mày", "Tao", "À", "Ừ", "Trời", "Chưa", "Đi", "Nghỉ", "Bug", "Code", "Mẹ", "Ba", "Anh",
                  "Chị", "Ông", "Bà", "Cô", "Chú", "Hai", "Ba", "Bốn", "Năm", "Sáu", "Bảy", "Tám", "Chín", "Mười",
@@ -1471,18 +1504,22 @@ class CandidateDiscovery:
     def __init__(self):
         self.compiled = [re.compile(p) for p in self.PATTERNS]
 
-    def extract(self, text: str) -> list[dict]:
+    def extract(self, text: str, apply_filter: bool = True) -> list[dict]:
         mentions = []
-        seen_spans = set()
+        seen_spans = []  # Dùng list để check overlap chuẩn
         for pattern in self.compiled:
             for match in pattern.finditer(text):
                 surface = match.group(0)
                 start, end = match.start(), match.end()
-                if surface in self.STOPWORDS or len(surface) < 2:
+                if len(surface) < 2:
                     continue
-                if not any(s <= start < e or s < end <= e for s, e in seen_spans):
+                if apply_filter and surface in self.STOPWORDS:
+                    continue
+                # FIX: Overlap check chuẩn
+                is_overlap = any(not (end <= s or start >= e) for s, e in seen_spans)
+                if not is_overlap:
                     mentions.append({"surface": surface, "start": start, "end": end})
-                    seen_spans.add((start, end))
+                    seen_spans.append((start, end))
         return mentions
 
 
@@ -1491,30 +1528,70 @@ class MentionExtractor:
 
     FALLBACK_DICT = {"tuệ mẫn", "dead cells", "python", "sqlite", "ai"}
 
-    def __init__(self, router: 'ProviderRouter', registry: 'EntityRegistry', use_llm: bool = True):
+    def __init__(self, router: 'ProviderRouter', registry: 'EntityRegistry', use_llm: bool = True, 
+                 known_aliases_override: Iterable[str] | None = None):
         self.router = router
         self.registry = registry
         self.use_llm = use_llm
         self.discoverer = CandidateDiscovery()
-        self.version = "hybrid_v1.6_CONTEXT_DISCOVERY" if use_llm else "dict_only_v1.6"
+        self.version = "hybrid_v1.9_VERSIONED" if use_llm else "dict_only_v1.9"
+
+        # Cache state
+        self._cached_normalized: Optional[frozenset] = None
+        self._cached_patterns: Optional[list] = None
+        self._cached_version: int = -1  # Để force build lần đầu
+        self._cache_pinned: bool = False  # Flag cho Benchmark snapshot
+
+        # Nếu benchmark truyền override -> cache ngay lập tức, pin cache
+        if known_aliases_override is not None:
+            self._build_cache(list(known_aliases_override))
+            self._cache_pinned = True  # Benchmark snapshot bất tử
+
+    def _build_cache(self, aliases: list[str]):
+        """Build cache 1 lần: normalized aliases + compiled regex (deduplicated)."""
+        unique = {}
+        for alias in aliases:
+            norm = normalize_surface(alias)
+            if norm not in unique:
+                unique[norm] = alias
+        self._cached_normalized = frozenset(unique.keys())
+        self._cached_patterns = [
+            re.compile(rf"(?<!\w){re.escape(alias)}(?!\w)", re.IGNORECASE)
+            for alias in unique.values()
+        ]
+
+    def _ensure_cache(self):
+        """Version-based cache invalidation. Benchmark skip."""
+        if self._cache_pinned:
+            return  # Benchmark snapshot
+        current_version = self.registry.version
+        if self._cached_version != current_version:
+            aliases = self.registry.get_all_aliases()
+            if not aliases:
+                aliases = list(self.FALLBACK_DICT)
+            self._build_cache(aliases)
+            self._cached_version = current_version
+
+    def _get_normalized_aliases(self) -> frozenset:
+        self._ensure_cache()
+        return self._cached_normalized
+
+    def _get_compiled_patterns(self) -> list:
+        self._ensure_cache()
+        return self._cached_patterns
 
     def extract_recognition(self, text: str) -> tuple[dict, list[dict]]:
-        """Recognition only: Dict + LLM. Used for benchmark."""
+        """Recognition only: Dict + LLM."""
         t_start = time.perf_counter()
         dict_count = 0
         llm_count = 0
         mentions = []
 
-        # Pass 1: Dictionary (Known Entities)
-        aliases = self.registry.get_all_aliases()
-        if not aliases:
-            aliases = list(self.FALLBACK_DICT)
-        for term in aliases:
-            for match in re.finditer(re.escape(term), text, re.IGNORECASE):
+        for pattern in self._get_compiled_patterns():
+            for match in pattern.finditer(text):
                 mentions.append({"surface": match.group(0), "start": match.start(), "end": match.end(), "source": "dict"})
                 dict_count += 1
 
-        # Pass 2: LLM (Complex Entities)
         if self.use_llm:
             llm_mentions = self._llm_extract(text)
             existing_spans = {(m["start"], m["end"]) for m in mentions}
@@ -1527,25 +1604,16 @@ class MentionExtractor:
 
         mentions.sort(key=lambda x: x["start"])
         runtime_ms = int((time.perf_counter() - t_start) * 1000)
-        metrics = {
-            "dict_count": dict_count,
-            "llm_count": llm_count,
-            "total_count": len(mentions),
-            "runtime_ms": runtime_ms
-        }
+        metrics = {"dict_count": dict_count, "llm_count": llm_count, "total_count": len(mentions), "runtime_ms": runtime_ms}
         return metrics, mentions
 
-    def discover_candidates(self, text: str, recognized_spans: set = None) -> list[dict]:
-        """Discovery only: Regex candidates not in registry and not already recognized."""
+    def discover_candidates(self, text: str, recognized_spans: set = None, apply_filter: bool = True) -> list[dict]:
+        """Discovery only: Regex candidates."""
         if recognized_spans is None:
             recognized_spans = set()
 
-        aliases = self.registry.get_all_aliases()
-        if not aliases:
-            aliases = list(self.FALLBACK_DICT)
-        known_aliases = {normalize_surface(a) for a in aliases}
-
-        disc_mentions = self.discoverer.extract(text)
+        known_aliases = self._get_normalized_aliases()
+        disc_mentions = self.discoverer.extract(text, apply_filter=apply_filter)
         disc_filtered = []
         for m in disc_mentions:
             if (m["start"], m["end"]) not in recognized_spans:
@@ -1564,7 +1632,8 @@ Return ONLY a JSON list of strings (the exact surface forms).
             surfaces = json.loads(raw.replace("```json", "").replace("```", "").strip())
             results = []
             for surface in surfaces:
-                for match in re.finditer(re.escape(surface), text, re.IGNORECASE):
+                pattern = re.compile(rf"(?<!\w){re.escape(surface)}(?!\w)", re.IGNORECASE)
+                for match in pattern.finditer(text):
                     results.append({"surface": match.group(0), "start": match.start(), "end": match.end()})
             return results
         except:
@@ -1717,7 +1786,8 @@ def verify_gold_spans():
         print(f"✗ Span error: {e}")
         return False
 
-def run_benchmark(save_history: bool = True):
+def run_benchmark_recognition(save_history: bool = True):
+    """1. RECOGNITION BENCHMARK: Đo F1 của Dict + LLM trên tập đã biết."""
     import os
     from collections import Counter
     
@@ -1751,9 +1821,10 @@ def run_benchmark(save_history: bool = True):
         sf1,  sp_, sr  = _f1(s_tp,  s_fp,  s_fn)
         spf1, spp, spr = _f1(sp_tp, sp_fp, sp_fn)
         return {"surface_f1": sf1, "surface_p": sp_, "surface_r": sr,
-                "span_f1": spf1, "span_p": spp, "span_r": spr, "errors": errors}
+                "span_f1": spf1, "span_p": spp, "span_r": spr,
+                "sp_tp": sp_tp, "sp_fp": sp_fp, "sp_fn": sp_fn,
+                "errors": errors}
 
-    # Local instances — không leak ra ngoài, không drift với production singleton
     dict_extractor   = MentionExtractor(_router, _entity_registry, use_llm=False)
     hybrid_extractor = MentionExtractor(_router, _entity_registry, use_llm=True)
 
@@ -1763,7 +1834,7 @@ def run_benchmark(save_history: bool = True):
     n = len(gold_dataset)
 
     print("═" * 54)
-    print(f"  MENTION BENCHMARK  ({n} samples)")
+    print(f"  RECOGNITION BENCHMARK  ({n} samples)")
     print("═" * 54)
     print(f"  {'':22s}  {'Dict-only':>10}  {'Hybrid':>10}")
     print("─" * 54)
@@ -1773,13 +1844,6 @@ def run_benchmark(save_history: bool = True):
     print("─" * 54)
     sign = "+" if llm_gain >= 0 else ""
     print(f"  LLM Gain (Span F1): {sign}{llm_gain:.2%}")
-    print("─" * 54)
-    if hybrid_r["errors"]:
-        print(f"  Hybrid errors ({min(5, len(hybrid_r['errors']))} of {len(hybrid_r['errors'])}):")
-        for e in hybrid_r["errors"][:70]:
-            print(f"    [{e['i']}] \"{e['text']}...\"")
-            print(f"      Gold: {e['gold']}")
-            print(f"      Pred: {e['pred']}")
     print("═" * 54)
 
     if save_history:
@@ -1789,11 +1853,183 @@ def run_benchmark(save_history: bool = True):
             with open(history_path) as f:
                 history = json.load(f)
         history.append({
-            "ts": time.time(),
-            "samples": n,
-            "dict":   {"surface_f1": dict_r["surface_f1"],   "span_f1": dict_r["span_f1"]},
-            "hybrid": {"surface_f1": hybrid_r["surface_f1"], "span_f1": hybrid_r["span_f1"]},
+            "ts": time.time(), "version": BOT_VERSION, "type": "recognition", "samples": n,
+            "dict": {
+                "surface_f1": dict_r["surface_f1"], "span_f1": dict_r["span_f1"],
+                "sp_tp": dict_r["sp_tp"], "sp_fp": dict_r["sp_fp"], "sp_fn": dict_r["sp_fn"],
+                "errors": len(dict_r["errors"])
+            },
+            "hybrid": {
+                "surface_f1": hybrid_r["surface_f1"], "span_f1": hybrid_r["span_f1"],
+                "sp_tp": hybrid_r["sp_tp"], "sp_fp": hybrid_r["sp_fp"], "sp_fn": hybrid_r["sp_fn"],
+                "errors": len(hybrid_r["errors"])
+            },
             "llm_gain_span": llm_gain
+        })
+        with open(history_path, "w") as f:
+            json.dump(history, f, indent=2)
+        print(f"  Saved → {history_path}  ({len(history)} runs total)")
+
+
+def run_benchmark_discovery(save_history: bool = True):
+    """2. DISCOVERY BENCHMARK: Đo P/R/F1 của Regex trên tập Gold CHƯA CÓ trong Registry."""
+    import os
+    from collections import Counter
+    
+    gold_dataset = build_gold_mentions(GOLD_MENTIONS_TEST)
+    extractor = MentionExtractor(_router, _entity_registry, use_llm=True)
+    
+    # Lấy known aliases trực tiếp từ Registry
+    known_aliases = set(extractor.registry.get_all_aliases())
+    if not known_aliases:
+        known_aliases = set(extractor.FALLBACK_DICT)
+    known_aliases_norm = {normalize_surface(a) for a in known_aliases}
+    
+    tp = fp = fn = 0
+    errors = []
+    
+    for i, item in enumerate(gold_dataset):
+        text = item["text"]
+        gold_surface = Counter([normalize_surface(g["surface"]) for g in item["mentions"]])
+        
+        # Unknown Gold = Gold KHÔNG CÓ trong Registry
+        unknown_gold = Counter()
+        for g in gold_surface.elements():
+            if g not in known_aliases_norm:
+                unknown_gold[g] += 1
+                
+        # Chạy Discovery KHÔNG cần output của Recognition
+        # Truyền set() rỗng để nó không filter theo Recognition
+        disc_mentions = extractor.discover_candidates(text, set())
+        disc_surfaces = Counter([normalize_surface(m["surface"]) for m in disc_mentions])
+        
+        # Tính P/R/F1
+        tp += sum((unknown_gold & disc_surfaces).values())
+        fp += sum((disc_surfaces - unknown_gold).values())
+        fn += sum((unknown_gold - disc_surfaces).values())
+        
+        if disc_surfaces != unknown_gold:
+            errors.append({
+                "i": i, 
+                "text": text[:40], 
+                "unknown_gold": list(unknown_gold.elements()), 
+                "discovered": list(disc_surfaces.elements())
+            })
+
+    prec = tp / (tp + fp) if (tp + fp) > 0 else 0.0
+    rec  = tp / (tp + fn) if (tp + fn) > 0 else 0.0
+    f1   = 2 * prec * rec / (prec + rec) if (prec + rec) > 0 else 0.0
+    n = len(gold_dataset)
+    
+    print("═" * 54)
+    print(f"  DISCOVERY BENCHMARK  ({n} samples)")
+    print("═" * 54)
+    print(f"  Target: Gold entities NOT in Registry")
+    print("─" * 54)
+    print(f"  Candidate Precision: {prec:.2%}")
+    print(f"  Candidate Recall:    {rec:.2%}")
+    print(f"  Candidate F1:        {f1:.2%}")
+    print("─" * 54)
+    print(f"  TP: {tp}  |  FP: {fp}  |  FN: {fn}")
+    print("─" * 54)
+    if errors:
+        print(f"  Errors ({min(5, len(errors))} of {len(errors)}):")
+        for e in errors[:5]:
+            print(f"    [{e['i']}] \"{e['text']}...\"")
+            print(f"      Unknown Gold: {e['unknown_gold']}")
+            print(f"      Discovered:   {e['discovered']}")
+    print("═" * 54)
+
+    if save_history:
+        history_path = "benchmark_history.json"
+        history = []
+        if os.path.exists(history_path):
+            with open(history_path) as f:
+                history = json.load(f)
+        history.append({
+            "ts": time.time(), "version": BOT_VERSION, "type": "discovery", "samples": n,
+            "precision": round(prec, 4), "recall": round(rec, 4), "f1": round(f1, 4),
+            "tp": tp, "fp": fp, "fn": fn, "errors": len(errors)
+        })
+        with open(history_path, "w") as f:
+            json.dump(history, f, indent=2)
+        print(f"  Saved → {history_path}  ({len(history)} runs total)")
+
+
+def run_benchmark_e2e(save_history: bool = True):
+    """3. END-TO-END BENCHMARK: Đo Coverage của cả Pipeline (Rec + Disc) vs Gold."""
+    import os
+    from collections import Counter
+    
+    gold_dataset = build_gold_mentions(GOLD_MENTIONS_TEST)
+    extractor = MentionExtractor(_router, _entity_registry, use_llm=True)
+    
+    tp = fp = fn = 0
+    errors = []
+    
+    for i, item in enumerate(gold_dataset):
+        text = item["text"]
+        gold_surface = Counter([normalize_surface(g["surface"]) for g in item["mentions"]])
+        
+        # 1. Chạy Recognition
+        _, mentions = extractor.extract_recognition(text)
+        recognized_spans = {(m["start"], m["end"]) for m in mentions}
+        recognized_surfaces = Counter([normalize_surface(m["surface"]) for m in mentions])
+        
+        # 2. Chạy Discovery (truyền spans đã recognize để tránh duplicate)
+        disc_mentions = extractor.discover_candidates(text, recognized_spans)
+        disc_surfaces = Counter([normalize_surface(m["surface"]) for m in disc_mentions])
+        
+        # 3. Final Coverage = Recognition + Discovery
+        final_coverage = recognized_surfaces + disc_surfaces
+        
+        # 4. Tính P/R/F1 vs Gold
+        tp += sum((gold_surface & final_coverage).values())
+        fp += sum((final_coverage - gold_surface).values())
+        fn += sum((gold_surface - final_coverage).values())
+        
+        if final_coverage != gold_surface:
+            errors.append({
+                "i": i, 
+                "text": text[:40], 
+                "gold": list(gold_surface.elements()), 
+                "final": list(final_coverage.elements())
+            })
+
+    prec = tp / (tp + fp) if (tp + fp) > 0 else 0.0
+    rec  = tp / (tp + fn) if (tp + fn) > 0 else 0.0
+    f1   = 2 * prec * rec / (prec + rec) if (prec + rec) > 0 else 0.0
+    n = len(gold_dataset)
+    
+    print("═" * 54)
+    print(f"  END-TO-END BENCHMARK  ({n} samples)")
+    print("═" * 54)
+    print(f"  Target: Full Pipeline Coverage (Rec + Disc)")
+    print("─" * 54)
+    print(f"  Coverage Precision: {prec:.2%}")
+    print(f"  Coverage Recall:    {rec:.2%}")
+    print(f"  Coverage F1:        {f1:.2%}")
+    print("─" * 54)
+    print(f"  TP: {tp}  |  FP: {fp}  |  FN: {fn}")
+    print("─" * 54)
+    if errors:
+        print(f"  Errors ({min(5, len(errors))} of {len(errors)}):")
+        for e in errors[:5]:
+            print(f"    [{e['i']}] \"{e['text']}...\"")
+            print(f"      Gold:     {e['gold']}")
+            print(f"      Final:    {e['final']}")
+    print("═" * 54)
+
+    if save_history:
+        history_path = "benchmark_history.json"
+        history = []
+        if os.path.exists(history_path):
+            with open(history_path) as f:
+                history = json.load(f)
+        history.append({
+            "ts": time.time(), "version": BOT_VERSION, "type": "e2e", "samples": n,
+            "precision": round(prec, 4), "recall": round(rec, 4), "f1": round(f1, 4),
+            "tp": tp, "fp": fp, "fn": fn, "errors": len(errors)
         })
         with open(history_path, "w") as f:
             json.dump(history, f, indent=2)
@@ -4125,14 +4361,14 @@ def webhook():
                     threading.Thread(target=process_deep, args=(sender_id, user_text[len("/athena"):].strip()), daemon=True).start()
                     continue
 
-                def process():
+                def process(sid=sender_id, msg=user_text, _mid=mid):
                     try:
-                        cancel_follow_up(sender_id); _reset_follow_up_count(sender_id)
-                        send_typing_on(sender_id)
+                        cancel_follow_up(sid); _reset_follow_up_count(sid)
+                        send_typing_on(sid)
                         time.sleep(get_initial_delay())
-                        ai_response, _ = call_groq_ai(sender_id, user_text) 
-                        send_fb_message_parts(sender_id, ai_response)
-                        schedule_follow_up(sender_id)
+                        ai_response, _ = call_groq_ai(sid, msg, metadata={"turn_uid": _mid})
+                        send_fb_message_parts(sid, ai_response)
+                        schedule_follow_up(sid)
                     except Exception as e: log.exception(e)
                 threading.Thread(target=process, daemon=True).start()
     return "ok", 200
@@ -4212,9 +4448,15 @@ def schedule_follow_up(sender_id: str):
 
 if __name__ == "__main__":
     import sys
-    if "--benchmark" in sys.argv:
+    if "--benchmark-recognition" in sys.argv or "--benchmark" in sys.argv:
         verify_gold_spans()
-        run_benchmark()
+        run_benchmark_recognition()
+    elif "--benchmark-discovery" in sys.argv:
+        verify_gold_spans()
+        run_benchmark_discovery()
+    elif "--benchmark-e2e" in sys.argv:
+        verify_gold_spans()
+        run_benchmark_e2e()
     elif "--verify" in sys.argv:
         verify_gold_spans()
     else:
