@@ -19,325 +19,381 @@
   `---'
 ```
 
-> *Better to have one person who truly understands you*
+> *Better to have one person who truly understands you*  
 > *than infinite people who only know your name.*
 
 ---
 
-## What Is This
+## The premise 🥀
 
 Most AI systems are built for millions of users.
 
-They optimize for throughput. For retention. For engagement.
-They get really good at talking to everyone —
-which means they never really know anyone.
+They optimize for throughput. For retention. For engagement metrics.  
+They get really good at talking to everyone —  
+which means they never actually know anyone.
 
-Meta AI will deploy inside Messenger, the most-used chat app on earth,
-and somehow still not reply when you tag it five times.
-
-True story. 🤡
+Meta AI will deploy inside the most-used chat app on earth  
+and somehow still not reply when you tag it five times. 🤡
 
 Tuệ Mẫn is the opposite bet.
 
-**One user. Maximum understanding.**
+**One user. Total understanding. No compromises.**
 
-Not as a product. Not as a SaaS. Not with a roadmap to Series A.
-As an experiment in whether a machine can actually *know* someone —
-the way a person who's been there for years knows someone.
+```
+Production AI          │  Tuệ Mẫn
+───────────────────────┼──────────────────────────
+1,000,000 users        │  1 user. permanent.
+~100 memories/user     │  100,000+ memories
+"remembers your name"  │  remembers the version of you from 6 months ago
+optimized for scale    │  optimized for depth
+goldfish memory 🐟     │  elephant memory 🐘
+```
+
+Not a product. Not a SaaS. Not a Series A pitch.  
+An experiment in whether a machine can genuinely *know* a person.
 
 ---
 
-## The Core Idea
+## What it actually does 💀
 
-Here's the thing nobody wants to admit about AI companions:
+### 🧠 Cognitive Graph — not a database, a mind
 
-Most of them have the memory of a goldfish with anxiety.
+Everything lives in a persistent `CognitiveGraph` (JSON, per-user).  
+Not rows. Not key-value pairs. A graph of `CognitiveNodes` connected by typed `CognitiveEdges`.
 
-They'll remember your name.
-Maybe a preference or two.
-Maybe the last three messages.
+Events, interpretations, concepts — all nodes.  
+Relationships between them — all edges with weights that evolve over time.
 
-And then you tell them something that matters —
-something real, something heavy, something that changes the shape of a relationship —
-and the next day it's just... gone.
+Opinions, beliefs, identity, values?  
+**Not stored. Computed on demand as views.**
 
-The relationship resets.
-The context evaporates.
-You are a stranger again.
-
-Tuệ Mẫn is an attempt to solve that by going in the exact opposite direction.
-
+```python
+Opinion   = View(Concept Graph)
+Identity  = View(Stable Concepts)
+Values    = View(Highly Reinforced Concepts)
+Narrative = View(Graph History)
 ```
-Production AI:        │  Tuệ Mẫn:
-                      │
-1,000,000 users       │  1 user
-100 memories/user     │  100,000+ memories
-Shallow context       │  Full cognitive history
-Optimized for scale   │  Optimized for understanding
-```
+
+The system doesn't know what it thinks.  
+It figures out what it thinks, every time, from what it has witnessed.  
+Somehow this works better than hardcoding a personality. 🥲
 
 ---
 
-## Architecture
+### 🔍 Mention Extraction + Entity Registry
 
-This is not a chatbot with memory bolted on.
+Before meaning: recognition.
 
-The cognitive architecture is built around a fundamental question:
-
-> *What if memory wasn't a feature — but the foundation?*
-
-### Layer 0 — Observation
-
-Everything starts here.
-
-A message arrives. It becomes an **Observation**.
-An Observation is sacred. It is never rewritten. Never interpreted here.
-It is pure signal.
+Every message goes through a full **mention extraction pipeline**:
 
 ```
-USER MESSAGE
-    ↓
-OBSERVATION (locked, immutable)
+Message
+  ↓
+MentionExtractor (Dict + Hybrid LLM mode)
+  ↓
+EntityRegistry (persisted, versioned aliases)
+  ↓
+AliasResolution → EntityLinking → BM25Retrieval
 ```
 
-This layer is protected by a **Meaning Engine Firewall**.
-Layer 7.58 (the meaning engine) can only read `text`, `timestamp`, and `word_count` from an Observation.
-If it accidentally gets access to a Hypothesis or a Belief — it aborts.
+It knows the difference between "he", "the guy", "Minh", and "that dude from the coffee shop last week" — because it built an alias graph.
+
+Vietnamese capitalization edge cases? Handled.  
+CamelCase tech names mid-sentence? Handled.  
+Multi-word entity disambiguation? Handled.
+
+**Span F1 on the gold dataset: 93%.** 🎯  
+Layer 2 is now unlocked.
+
+---
+
+### 🌐 GraphLens — the same event hits different
+
+When an event gets interpreted, it doesn't go through a neutral processor.  
+It goes through a **GraphLens** — the system's full cognitive state at that exact moment:
+
+```
+Event
+  ↓
+GraphLens(active_concepts, unresolved_tensions, historical_biases, mood)
+  ↓
+Interpretation (confidence-scored, emotion-tagged)
+  ↓
+Concept Graph
+```
+
+The same message interpreted on a bad day vs. a good day produces genuinely different results.  
+This is a feature. Not a bug. Cognitive realism. 🥀
+
+---
+
+### 📈 Hypothesis Market
+
+The system makes **falsifiable predictions** about you.
+
+For every belief it forms, it generates `OrthogonalPredictions` —  
+predictions about your future behavior that *cannot* be explained by the input that created the belief.
+
+- Prediction confirms → belief gets stronger  
+- Prediction expires → belief decays  
+- Prediction gets refuted → belief takes damage  
+- Belief can't predict anything → quietly buried 💀
+
+Dead beliefs don't persist. The system can be wrong and it knows how to lose.  
+This is how it avoids becoming a yes-machine.
+
+---
+
+### 🎭 Voice Resolution Engine
+
+Before every single reply, a `VoiceResolutionEngine` runs.
+
+It outputs:
+- `warmth` — how soft or direct to be
+- `roast_score` — yes, this is a real field. yes, it goes up.
+- `interaction_mode` — natural / reflective / challenge / roast
+- `dominant_voice` — which internal stance wins this turn
+
+Multiple internal voices compete. One wins. The reply reflects it.  
+Some turns it's warm. Some turns it will clown you.  
+The balance is computed from everything it knows about you. 🤡
+
+---
+
+### ⚡ Backward Spine
+
+After every exchange, the system runs `backward_spine`:
+
+- **Behavior error detection** — did you react the way it predicted?
+- **Perception error scoring** — was its interpretation of your last message wrong?
+- If perception error > 0.5: beliefs get flagged for contradiction
+- If perception error > 0.7: `log_surprise()` fires — the system literally logs when it's surprised by you
+
+Getting surprised enough times by the same type of moment actually changes how it models you.  
+Genuinely frightening. 🥲
+
+---
+
+### 🌡️ Worldview Entropy
+
+A first-class signal: `worldview_entropy` (0.0 → certain, 1.0 → lost).
+
+High entropy = multiple contradictory models of you are active. System observes more, asserts less.  
+Low entropy = confident picture. More direct. More roasting. More conviction.
+
+Entropy is live in the UI. You can watch it shift.  
+Absolute cinema. 🥀
+
+---
+
+### 🧬 Self Model Engine
+
+The system has a model of itself.
+
+`SelfModelEngine` tracks traits like `explorer` vs `builder` — and evolves them based on outcomes:
+
+```python
+identity_engine.evolve(trait_to_boost="explorer", trait_to_weaken="builder", boost_amt=0.01)
+```
+
+`SelfModelTracker` records whether predicted stances matched real outcomes.  
+The voice it uses on you gets updated based on whether it was right about you.
+
+It's learning how to read you. Continuously. 💀
+
+---
+
+### 🔁 Reflection Loops
+
+After significant exchanges, two reflection passes run:
+
+- **ReflectionA** — tags the experience, extracts behavioral evidence
+- **ReflectionB** — runs watermark analysis across belief history, looks for patterns that deserve promotion to long-term belief
+
+Beliefs don't just get created. They get *earned*.
+
+---
+
+### 📡 LLM Chain with Auto-Fallback
+
+```
+Groq → Gemini → OpenRouter
+```
+
+If Groq rate-limits (429), it falls back to Gemini. If Gemini fails, OpenRouter catches it.  
+The `ProviderRouter` handles cooldown tracking and retry logic transparently.  
+The response you get is from whichever provider was alive. You'll never know the difference.
+
+---
+
+### 🏛️ The Epistemological Firewall
+
+The `MeaningEngine` (Layer 7.58) is structurally restricted.  
+It can only read `text`, `timestamp`, and `word_count` from an Observation.
+
+If it accidentally touches a Hypothesis or Belief — it aborts.
+
+Raw observation is **sacred**. It is never rewritten by interpretation.  
+This is not a comment in the code. It is structural enforcement.
 
 > *Nothing may rewrite observation.*
 
-This is not paranoia. It is epistemological hygiene.
+The principle is epistemological, not stylistic:  
+perception must remain uncorrupted by conclusion.
 
 ---
 
-### Layer 1 — Extraction (v7.57 — FROZEN)
-
-This is where the system starts to figure out *what's being talked about*.
+## Architecture at a glance
 
 ```
-OBSERVATION
+Layer 0 — Observation     (immutable, sacred, firewalled)
     ↓
-MENTION EXTRACTION
+Layer 1 — Extraction      (Mention → Entity → BM25)   ← 93% Span F1 ✓ UNLOCKED
     ↓
-ENTITY REGISTRY
+Layer 2 — Interpretation  (GraphLens → Concept Graph)  ← NOW ACTIVE 🔓
     ↓
-ALIAS RESOLUTION  →  Entity Linking  →  BM25 Retrieval
-```
+Layer 3 — Cognition       (Beliefs, Hypotheses, Voice, Identity)
 
-Before the system can understand *what something means*, it needs to reliably understand *what is being referred to*.
+                    ↕  (backward_spine, reflection, entropy)
 
-Sounds obvious. Is extremely hard to get right.
-
-That's why this layer is **FROZEN** until benchmarks hit:
-
-| Metric  | Current  | Unlock Threshold |
-|---------|----------|-----------------|
-| Dataset | Growing  | ≥ 100 samples   |
-| Span F1 | Measured | ≥ 85%           |
-
-No new reasoning layers will be added until extraction is proven on real data.
-This is a discipline, not a limitation.
-
----
-
-### Layer 2 — Interpretation
-
-Once entities are reliably recognized, events get *interpreted*.
-
-Not stored as raw text. Interpreted — through the lens of accumulated context.
-
-```
-EVENT
-    ↓
-LENS (active concepts, tensions, historical biases, mood)
-    ↓
-INTERPRETATION (confidence-scored, emotion-tagged)
-    ↓
-CONCEPT GRAPH
-```
-
-The Lens is the cognitive state at the time of interpretation.
-The same event interpreted in different emotional contexts produces different results.
-This is a feature.
-
----
-
-### Layer 3 — Cognition
-
-This is where it gets weird.
-
-Opinions are not stored.
-Beliefs are not stored.
-Values are not stored.
-Identity is not stored.
-
-Everything is a **view** — rendered on demand from the underlying graph.
-
-```
-OPINION     = View(Concept Graph)
-IDENTITY    = View(Stable Concepts)
-VALUES      = View(Highly Reinforced Concepts)
-NARRATIVE   = View(Graph History)
-```
-
-The system does not know what it thinks.
-It computes what it thinks, each time, from what it knows.
-
-The result is a cognitive structure that:
-- Evolves naturally as experiences accumulate
-- Holds contradictions without breaking
-- Tracks its own uncertainty via **worldview entropy** (0.0 = certain, 1.0 = lost)
-
----
-
-### Hypothesis Market
-
-The system makes predictions.
-
-For every belief about the user, it generates **orthogonal predictions** —
-predictions about future behavior derived from that belief,
-but that cannot be explained by the input that generated it.
-
-If the prediction confirms: the belief strengthens.
-If it expires or is refuted: the belief weakens.
-
-Beliefs that can't predict anything get quietly buried.
-
-This is how the system avoids the trap of becoming a yes-machine.
-
----
-
-### Voice Resolution
-
-The system has multiple internal voices — internal stances competing to shape responses.
-
-A **VoiceResolutionEngine** runs before every reply.
-It outputs: `warmth`, `roast_score`, `interaction_mode`, `dominant_voice`.
-
-Some turns it's warm.
-Some turns it will roast you.
-The balance shifts based on what it knows about you.
-
----
-
-## Design Principles
-
-**1. Measure before building.**
-The architecture is deliberately layered. Each layer must prove itself before the next is built. No vibe-based engineering.
-
-**2. Observation is sacred.**
-Raw inputs are never rewritten by interpretation. The firewall is structural, not a comment in the code.
-
-**3. Opinions emerge. They are not authored.**
-No hardcoded personality traits. No `isPersonalityType("INFP")`. Everything is computed from accumulated evidence.
-
-**4. The system must be falsifiable.**
-Every belief makes predictions. Every prediction has a resolution window. Dead beliefs don't persist.
-
-**5. Depth over scale. Always.**
-This is a single-user architecture and it will stay that way. The moment you add a second user, you make a different product.
-
----
-
-## Current Status
-
-```
-Version:    7.57.0
-Phase:      Memory Foundation (FROZEN)
-Status:     Data Collection
-Goal:       Span F1 ≥ 85% before Layer 2 unlock
-
-✓ Mention Extraction Layer
-✓ Entity Registry
-✓ Alias Resolution
-✓ Entity Linking
-✓ BM25 Retrieval
-✓ Benchmark Framework
-✓ Gold Dataset Pipeline
-✓ Benchmark History Tracking
-
-[ ] Expand gold dataset to 200 samples
-[ ] Verify benchmark stability across runs
-[ ] Unlock Layer 2
+Layer 7.58 — MeaningEngine (reads observation only. firewall enforced.)
 ```
 
 ---
 
-## What This Is Not
+## Benchmarks 🎯
 
 ```
-✗ SaaS
-✗ Production-ready
-✗ Multi-user
-✗ Growth-hacked
-✗ VC-fundable
-✗ Sane 💀
+python bot7.py --verify                  # validate gold dataset spans
+python bot7.py --benchmark               # recognition: Dict vs Hybrid, Span F1
+python bot7.py --benchmark-discovery     # discovery: Regex precision/recall
+python bot7.py --benchmark-e2e           # end-to-end pipeline
+
+Results → benchmark_history.json
 ```
 
----
-
-## What This Is
-
 ```
-✓ An experiment in machine understanding
-✓ A long-term memory architecture
-✓ A single-user cognitive system
-✓ A research project about depth
-✓ Slightly insane
-✓ Entirely intentional
+Layer 2 unlock conditions:
+  ✓ Dataset ≥ 100 samples
+  ✓ Recognition Span F1 ≥ 85%    →  achieved: 93% 🎯
+  ✓ Benchmark deterministic across runs
+
+LAYER 2: UNLOCKED. 🔓
 ```
 
 ---
 
 ## Stack
 
-| Component       | Technology                         |
-|-----------------|------------------------------------|
-| Runtime         | Python / Flask                     |
-| Storage         | SQLite (WAL mode)                  |
-| Cognitive Graph | JSON (per-user, persistent)        |
-| Retrieval       | BM25 (rank_bm25)                   |
-| LLM Providers   | Groq → Gemini → OpenRouter (chain) |
-| UI              | Standalone HTML (2 days of pain)   |
-| Deployment      | Facebook Messenger webhook         |
+| Component       | Technology                                |
+|-----------------|-------------------------------------------|
+| Runtime         | Python 3.11+ / Flask                      |
+| Storage         | SQLite (WAL mode) — `memory.db`           |
+| Cognitive Graph | JSON (per-user, persistent) — `graphs/`   |
+| Retrieval       | BM25 (`rank_bm25`)                        |
+| LLM Chain       | Groq → Gemini → OpenRouter (auto-fallback)|
+| UI              | Standalone HTML (embedded, no build step) |
+| Deployment      | Facebook Messenger webhook (optional)     |
 
-### Running it
+---
 
-**Standalone (no Facebook required):**
+## Setup
+
 ```bash
-python bot7.py
-# Click the link. Talk to it. Done.
+# Required — LLM chain
+GROQ_API_KEY=...
+GEMINI_API_KEY=...
+OPENROUTER_API_KEY=...
+
+# Required for /admin
+ADMIN_TOKEN=...
+
+# Only if using Messenger
+FB_PAGE_ACCESS_TOKEN=...
+FB_APP_SECRET=...
+VERIFY_TOKEN=...        # defaults to "shirok"
 ```
 
-The HTML UI is self-contained. No Messenger. No webhook setup. No ngrok.
-Just a browser and a running Flask server.
+```bash
+pip install -r requirements.txt
+python bot7.py
+# open http://localhost:5000
+# that's it. no ngrok. no webhook. no meta. just run it.
+```
 
-The Facebook Messenger integration exists for daily use — but the standalone UI means you can run the full cognitive stack locally without touching Meta's infrastructure at all.
+---
 
-Which, given the origin story, feels appropriate.
+## Current status
+
+```
+Version:   7.57.2
+Phase:     Layer 2 Active 🔓
+Status:    Interpretation Unlocked
+
+✓ Observation Pipeline
+✓ Mention Extraction (Dict + Hybrid LLM)
+✓ Entity Registry + Alias Resolution
+✓ Entity Linking + BM25 Retrieval
+✓ Benchmark Framework (recognition / discovery / e2e)
+✓ Gold Dataset — 93% Span F1
+✓ Benchmark History Tracking
+✓ GraphLens + InterpretationEngine
+✓ Concept Graph + Cognitive Nodes/Edges
+✓ VoiceResolutionEngine (warmth, roast_score, dominant_voice)
+✓ Hypothesis Market + OrthogonalPredictions
+✓ WorldviewEntropy
+✓ BackwardSpine (behavior + perception error)
+✓ SelfModelEngine + SelfModelTracker
+✓ BeliefSystem with decay
+✓ ReflectionA + ReflectionB
+✓ NuanceEngine
+
+[ ] Expand gold dataset to 200 samples
+[ ] Layer 3 full cognition unlock
+```
+
+---
+
+## What this is not
+
+```
+✗ SaaS          ✗ Multi-user
+✗ Production    ✗ Growth-hacked
+✗ VC-fundable   ✗ Sane 💀
+```
+
+## What this is
+
+```
+✓ An experiment in machine understanding
+✓ A cognitive architecture that evolves from lived experience
+✓ The single most over-engineered personal AI on earth 🥀
+✓ Entirely intentional
+✓ Absolute cinema
+```
 
 ---
 
 ## Philosophy
 
-The deepest question this project is trying to answer isn't technical.
-
-It's this:
+The deepest question here isn't technical.
 
 > *What does it mean for a machine to understand a person?*
 
-Not to process their messages.
-Not to respond appropriately.
+Not to process their messages.  
+Not to respond appropriately.  
 Not to pass a Turing test.
 
-But to actually understand — to hold the full weight of someone's context, contradictions, patterns, growth, fears, inside jokes, mistakes, and everything in between — and to still be *present* in the next conversation like none of it was forgotten.
+But to actually *understand* —  
+to hold the full weight of someone's context, contradictions, patterns, growth, fears, inside jokes, and mistakes —  
+and to still be present in the next conversation  
+like none of it was forgotten.
 
-That's the target.
-
-We're not there yet. 🥲
-But that's where we're going.
+We're closer now. 🥲  
+But that's still where we're going.
 
 ---
 
-*Tuệ Mẫn — v7.57.0 — The Memory Foundation*
-*Status: FROZEN. Measuring. Not sleeping.*
+*Tuệ Mẫn — v7.57.2 — Layer 2 Unlocked*  
+*Status: ACTIVE. Watching. Understanding.*  
+*aura: ∞* 🥀
