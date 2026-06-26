@@ -222,6 +222,21 @@ Mind v7.58.x → Layer 2 (Event Graph)
 LOCKED UNTIL FURTHER NOTICE.
 ───────────────────────────────────────────────────────────────
 """
+"""
+MIGRATION PLAN LAYER 3 (note)
+Legacy Belief
+↓
+
+Event Adapter (temporary)
+
+↓
+
+New Belief
+
+↓
+
+Delete Adapter
+"""
 
 import os
 import re
@@ -1490,10 +1505,22 @@ _entity_registry = EntityRegistry(DB_PATH)
 class CandidateDiscovery:
     """LVL 1: Heuristic Entity Discovery. Vietnamese-friendly patterns."""
     PATTERNS = [
-        r'\b[A-Z][a-z]+(?:[A-Z][a-z]+)+\b',
-        r'\b[A-Z]{2,5}\b',
-        r'\b[A-Z][a-z]{2,20}\b',
+        # 1. Mixed Case (CamelCase/PascalCase): Bắt đầu bằng Hoa, có ít nhất 1 chữ thường ở giữa (PostgreSQL, FastAPI, SQLite, JavaScript, MemoryOS)
+        r'\b[A-Z][a-zA-Z0-9]*[a-z][a-zA-Z0-9]*\b',
+        
+        # 2. Acronym + Number: 2-12 chữ Hoa, có thể có số ở cuối (HDBSCAN, BM25, AI, GPT4)
+        r'\b[A-Z]{2,12}[0-9]*\b',
+        
+        # 3. Dotted Token: Alphanumeric nối bằng dấu chấm (Node.js, ASP.NET)
+        r'\b[A-Za-z0-9]+(?:\.[A-Za-z0-9]+)+\b',
+        
+        # 4. Multi-word Title Case: Từ Hoa theo sau bởi các từ Hoa/Số, ngăn cách bởi space (Memory OS, Vue 3, PostgreSQL 16)
         r'\b[A-Z][A-Za-z0-9]*(?:\s[A-Z0-9][A-Za-z0-9]*)+\b',
+        
+        # 5. Single Capitalized: 1 chữ Hoa + 2-20 chữ thường (Docker, Redis)
+        r'\b[A-Z][a-z]{2,20}\b',
+        
+        # 6. Hyphen/Snake: Nối bằng gạch ngang/gạch dưới (Cognitive-Spine)
         r'\b[A-Za-z]+[-_][A-Za-z]+\b',
     ]
     STOPWORDS = {"Hôm", "Qua", "Đang", "Sẽ", "Đã", "Vừa", "Nhưng", "Thì", "Cái", "Mấy", "Nhiều", "Tốt", "Vui", "Buồn",
@@ -1505,8 +1532,11 @@ class CandidateDiscovery:
         self.compiled = [re.compile(p) for p in self.PATTERNS]
 
     def extract(self, text: str, apply_filter: bool = True) -> list[dict]:
-        mentions = []
-        seen_spans = []  # Dùng list để check overlap chuẩn
+        """FIX: Longest-Match Priority + Deduplicate + Deterministic Sort."""
+        raw_matches = []
+        seen_spans = set()
+        
+        # 1. Thu thập TẤT CẢ matches, deduplicate ngay tại đây
         for pattern in self.compiled:
             for match in pattern.finditer(text):
                 surface = match.group(0)
@@ -1515,11 +1545,27 @@ class CandidateDiscovery:
                     continue
                 if apply_filter and surface in self.STOPWORDS:
                     continue
-                # FIX: Overlap check chuẩn
-                is_overlap = any(not (end <= s or start >= e) for s, e in seen_spans)
-                if not is_overlap:
-                    mentions.append({"surface": surface, "start": start, "end": end})
-                    seen_spans.append((start, end))
+                key = (start, end)
+                if key in seen_spans:
+                    continue
+                seen_spans.add(key)
+                raw_matches.append({"surface": surface, "start": start, "end": end})
+                
+        # 2. Sort theo (-length, start) để deterministic: dài nhất trước, cùng độ dài thì trái nhất trước
+        raw_matches.sort(key=lambda x: (-(x["end"] - x["start"]), x["start"]))
+        
+        # 3. Filter overlap (giữ lại thằng dài nhất, bỏ thẳng bị lồng vào)
+        mentions = []
+        accepted_spans = []
+        for m in raw_matches:
+            start, end = m["start"], m["end"]
+            is_overlap = any(not (end <= s or start >= e) for s, e in accepted_spans)
+            if not is_overlap:
+                mentions.append(m)
+                accepted_spans.append((start, end))
+                
+        # 4. Sort lại theo vị trí start để output tuần tự
+        mentions.sort(key=lambda x: x["start"])
         return mentions
 
 
