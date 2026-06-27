@@ -24,6 +24,16 @@
 
 ---
 
+Tuệ Mẫn is not a chatbot.
+
+It is a long-term cognitive architecture designed to understand a single person over years of interaction.
+
+The objective is not to answer questions.
+
+The objective is to build understanding.
+
+---
+
 ## The premise 🥀
 
 Most AI systems are built for millions of users.
@@ -41,11 +51,12 @@ Tuệ Mẫn is the opposite bet.
 
 ```
 Production AI          │  Tuệ Mẫn
-───────────────────────┼──────────────────────────
+───────────────────────┼──────────────────────────────────────────
 1,000,000 users        │  1 user. permanent.
 ~100 memories/user     │  100,000+ memories
 "remembers your name"  │  remembers the version of you from 6 months ago
-optimized for scale    │  optimized for depth
+answer first           │  understand first
+confident about nothing│  uncertain until the evidence says otherwise
 goldfish memory 🐟     │  elephant memory 🐘
 ```
 
@@ -54,37 +65,151 @@ An experiment in whether a machine can genuinely *know* a person.
 
 ---
 
-## What it actually does 💀
+## Core Philosophy
 
-### 🧠 Cognitive Graph — not a database, a mind
+Every conclusion must be traceable.
 
-Everything lives in a persistent `CognitiveGraph` (JSON, per-user).  
-Not rows. Not key-value pairs. A graph of `CognitiveNodes` connected by typed `CognitiveEdges`.
+Every belief must be supported by evidence.
 
-Events, interpretations, concepts — all nodes.  
-Relationships between them — all edges with weights that evolve over time.
+Nothing is allowed to rewrite history.
 
-Opinions, beliefs, identity, values?  
-**Not stored. Computed on demand as views.**
+Knowledge is accumulated.
 
-```python
-Opinion   = View(Concept Graph)
-Identity  = View(Stable Concepts)
-Values    = View(Highly Reinforced Concepts)
-Narrative = View(Graph History)
-```
+Memory is never rewritten.
 
-The system doesn't know what it thinks.  
-It figures out what it thinks, every time, from what it has witnessed.  
-Somehow this works better than hardcoding a personality. 🥲
+The world has enough chatbots that are very confident about things they made up. 🗿  
+This one is built differently.
 
 ---
 
-### 🔍 Mention Extraction + Entity Registry
+## Cognitive Architecture 💀
+
+Six layers. One direction. No exceptions.
+
+```
+Layer 0 ─ Observation
+│
+│  Immutable.
+│  Append-only.
+│  Source of truth.
+│  Touch it and the whole system collapses. 💀
+│
+▼
+Layer 1 ─ Extraction
+│
+│  Mention Extraction
+│  Entity Linking
+│  Registry
+│  Retrieval
+│
+▼
+Layer 2 ─ Interpretation
+│
+│  Predicate Detection
+│  Argument Resolution
+│  Constraint Solving
+│  Event Construction
+│
+▼
+Layer 3 ─ Beliefs
+│
+│  Evidence Accumulation
+│  Belief Revision
+│  Unknown Resolution
+│
+▼
+Layer 4 ─ Reflection
+│
+│  Long-term pattern discovery
+│  Preference evolution
+│  Personal understanding
+│
+▼
+Layer 5 ─ Identity
+│
+│  Stable self-model
+│  Persistent worldview
+│
+```
+
+Each layer only sees what the layer below it produced.  
+No layer can reach down and change what already happened.  
+This is not a guideline. It is structural enforcement. 🥀
+
+---
+
+## Design Principles
+
+### Observation is immutable
+
+The original observation is never modified.
+
+Every higher layer references evidence instead of rewriting it.
+
+Raw observation is **sacred**.  
+If interpretation could touch observation, the whole epistemology collapses.  
+So it structurally cannot. Not a comment in the code. A constraint.
+
+> *Nothing may rewrite observation.*
+
+---
+
+### Layers are firewalled
+
+Higher layers cannot modify lower layers.
+
+```
+Observation
+↓  (read only)
+Extraction
+↓  (read only)
+Interpretation
+↓  (read only)
+Beliefs
+↓  (read only)
+Reflection
+↓  (read only)
+Identity
+```
+
+Information flows upward only.  
+Conclusions cannot corrupt their own evidence.  
+This is how the system avoids gaslighting itself. 🥲
+
+---
+
+### Uncertainty is preserved
+
+Tuệ Mẫn does not force a single interpretation.
+
+Layer 2 produces hypothesis distributions.  
+Layer 3 accumulates evidence over time before committing to beliefs.
+
+The system holds uncertainty as a first-class value.  
+It doesn't collapse to a confident answer until the evidence warrants it.  
+Somehow this is extremely rare in AI systems. 🤡
+
+---
+
+### Memory grows, not rewrites
+
+New observations reinforce, weaken, or revise beliefs.
+
+History is preserved.
+
+The system remembers *why* something became true.  
+If it was wrong, it remembers that too.  
+Dead beliefs don't persist. The system can lose gracefully. 💀
+
+---
+
+## What it actually does 🔍
+
+### Mention Extraction + Entity Registry
 
 Before meaning: recognition.
 
-Every message goes through a full **mention extraction pipeline**:
+Every message goes through a full extraction pipeline:
 
 ```
 Message
@@ -102,12 +227,11 @@ Vietnamese capitalization edge cases? Handled.
 CamelCase tech names mid-sentence? Handled.  
 Multi-word entity disambiguation? Handled.
 
-**Span F1 on the gold dataset: 93%.** 🎯  
-Layer 2 is now unlocked.
+**Span F1 on the gold dataset: 93%.** 🎯
 
 ---
 
-### 🌐 GraphLens — the same event hits different
+### GraphLens — the same event hits different
 
 When an event gets interpreted, it doesn't go through a neutral processor.  
 It goes through a **GraphLens** — the system's full cognitive state at that exact moment:
@@ -122,12 +246,12 @@ Interpretation (confidence-scored, emotion-tagged)
 Concept Graph
 ```
 
-The same message interpreted on a bad day vs. a good day produces genuinely different results.  
+The same message on a bad day vs. a good day produces genuinely different interpretations.  
 This is a feature. Not a bug. Cognitive realism. 🥀
 
 ---
 
-### 📈 Hypothesis Market
+### Hypothesis Market
 
 The system makes **falsifiable predictions** about you.
 
@@ -139,12 +263,12 @@ predictions about your future behavior that *cannot* be explained by the input t
 - Prediction gets refuted → belief takes damage  
 - Belief can't predict anything → quietly buried 💀
 
-Dead beliefs don't persist. The system can be wrong and it knows how to lose.  
+The system can be wrong and it knows how to lose.  
 This is how it avoids becoming a yes-machine.
 
 ---
 
-### 🎭 Voice Resolution Engine
+### Voice Resolution Engine
 
 Before every single reply, a `VoiceResolutionEngine` runs.
 
@@ -160,7 +284,7 @@ The balance is computed from everything it knows about you. 🤡
 
 ---
 
-### ⚡ Backward Spine
+### Backward Spine
 
 After every exchange, the system runs `backward_spine`:
 
@@ -174,7 +298,7 @@ Genuinely frightening. 🥲
 
 ---
 
-### 🌡️ Worldview Entropy
+### Worldview Entropy
 
 A first-class signal: `worldview_entropy` (0.0 → certain, 1.0 → lost).
 
@@ -183,100 +307,6 @@ Low entropy = confident picture. More direct. More roasting. More conviction.
 
 Entropy is live in the UI. You can watch it shift.  
 Absolute cinema. 🥀
-
----
-
-### 🧬 Self Model Engine
-
-The system has a model of itself.
-
-`SelfModelEngine` tracks traits like `explorer` vs `builder` — and evolves them based on outcomes:
-
-```python
-identity_engine.evolve(trait_to_boost="explorer", trait_to_weaken="builder", boost_amt=0.01)
-```
-
-`SelfModelTracker` records whether predicted stances matched real outcomes.  
-The voice it uses on you gets updated based on whether it was right about you.
-
-It's learning how to read you. Continuously. 💀
-
----
-
-### 🔁 Reflection Loops
-
-After significant exchanges, two reflection passes run:
-
-- **ReflectionA** — tags the experience, extracts behavioral evidence
-- **ReflectionB** — runs watermark analysis across belief history, looks for patterns that deserve promotion to long-term belief
-
-Beliefs don't just get created. They get *earned*.
-
----
-
-### 📡 LLM Chain with Auto-Fallback
-
-```
-Groq → Gemini → OpenRouter
-```
-
-If Groq rate-limits (429), it falls back to Gemini. If Gemini fails, OpenRouter catches it.  
-The `ProviderRouter` handles cooldown tracking and retry logic transparently.  
-The response you get is from whichever provider was alive. You'll never know the difference.
-
----
-
-### 🏛️ The Epistemological Firewall
-
-The `MeaningEngine` (Layer 7.58) is structurally restricted.  
-It can only read `text`, `timestamp`, and `word_count` from an Observation.
-
-If it accidentally touches a Hypothesis or Belief — it aborts.
-
-Raw observation is **sacred**. It is never rewritten by interpretation.  
-This is not a comment in the code. It is structural enforcement.
-
-> *Nothing may rewrite observation.*
-
-The principle is epistemological, not stylistic:  
-perception must remain uncorrupted by conclusion.
-
----
-
-## Architecture at a glance
-
-```
-Layer 0 ─ Observation
-           immutable, append-only, firewalled
-                     │
-                     ▼
-Layer 1 ─ Extraction
-           Mention → Entity → Registry → Retrieval
-           benchmark-gated (93% Span F1 ✓)
-                     │
-                     ▼
-Layer 2 ─ Interpretation
-           Events • Relations • Concept Graph
-                     │
-                     ▼
-Layer 3 ─ Cognition
-           Beliefs • Hypotheses • Voice
-                     │
-                     ▼
-Layer 4 ─ Reflection
-           Trends • Self-evaluation • Pattern synthesis
-                     │
-                     ▼
-Layer 5 ─ Identity
-           Stable principles • Personality • Long-term self
-
-────────────────────────────────────────────────────────
-
-MeaningEngine (v7.58)
-Reads Observation only.
-Cannot modify any lower layer.
-Firewall enforced.
-```
 
 ---
 
@@ -297,8 +327,72 @@ Layer 2 unlock conditions:
   ✓ Recognition Span F1 ≥ 85%    →  achieved: 93% 🎯
   ✓ Benchmark deterministic across runs
 
-LAYER 2: UNLOCKED. 🔓
+LAYER 2: LOCKED. 🔒
 ```
+
+---
+
+## Current Status
+
+```
+Layer 0 ─ Observation    ✅ Locked
+Layer 1 ─ Extraction     ✅ Locked
+Layer 2 ─ Interpretation ✅ Locked
+Layer 3 ─ Beliefs        🚧 In development
+Layer 4 ─ Reflection     [ ] Locked
+Layer 5 ─ Identity       [ ] Locked
+```
+
+**Active milestone:** Layer 3 — build persistent beliefs from observations without violating the immutability guarantees of Layers 0–2.
+
+---
+
+### Layer 0 ✅ Locked
+
+- Immutable observation pipeline
+- Append-only. Source of truth. Firewalled.
+
+---
+
+### Layer 1 ✅ Locked
+
+- Mention Extraction (Dict + Hybrid LLM)
+- Entity Registry + Alias Resolution
+- Entity Linking + BM25 Retrieval
+- Benchmark Framework (recognition / discovery / e2e)
+- Gold Dataset — 93% Span F1
+
+---
+
+### Layer 2 ✅ Locked
+
+- Predicate Detection + Argument Resolution
+- CSP Preprocessing + AC-3 Domain Pruning
+- Exact DFS Search + Constraint Evaluation
+- Hypothesis Distribution
+- ReasoningSession artifact
+- GraphLens + InterpretationEngine
+- Concept Graph + Cognitive Nodes/Edges
+- VoiceResolutionEngine (warmth, roast_score, dominant_voice)
+- Hypothesis Market + OrthogonalPredictions
+- WorldviewEntropy
+- BackwardSpine (behavior + perception error)
+- SelfModelEngine + SelfModelTracker
+- ReflectionA + ReflectionB
+- NuanceEngine
+
+---
+
+### Layer 3 🚧 In development
+
+- [ ] Evidence accumulation
+- [ ] Belief objects
+- [ ] UnknownValue
+- [ ] Belief confidence
+- [ ] Contradiction handling
+- [ ] Belief revision
+- [ ] Event merging
+- [ ] Temporal reasoning
 
 ---
 
@@ -342,34 +436,18 @@ python bot7.py
 
 ---
 
-## Current status
+## Why another AI memory project?
 
-```
-Version:   7.57.2
-Phase:     Layer 2 Active 🔓
-Status:    Interpretation Unlocked
+Most conversational systems remember messages.
 
-✓ Observation Pipeline
-✓ Mention Extraction (Dict + Hybrid LLM)
-✓ Entity Registry + Alias Resolution
-✓ Entity Linking + BM25 Retrieval
-✓ Benchmark Framework (recognition / discovery / e2e)
-✓ Gold Dataset — 93% Span F1
-✓ Benchmark History Tracking
-✓ GraphLens + InterpretationEngine
-✓ Concept Graph + Cognitive Nodes/Edges
-✓ VoiceResolutionEngine (warmth, roast_score, dominant_voice)
-✓ Hypothesis Market + OrthogonalPredictions
-✓ WorldviewEntropy
-✓ BackwardSpine (behavior + perception error)
-✓ SelfModelEngine + SelfModelTracker
-✓ BeliefSystem with decay
-✓ ReflectionA + ReflectionB
-✓ NuanceEngine
+Tuệ Mẫn attempts to remember experiences.
 
-[ ] Expand gold dataset to 200 samples
-[ ] Layer 3 full cognition unlock
-```
+Rather than storing conversations, it builds a structured model of the user's world from evidence accumulated over time.
+
+The project favors correctness, provenance, and gradual understanding over immediate answers.
+
+There are already enough systems that sound confident about things they invented. 🥀  
+This one earns it.
 
 ---
 
@@ -386,6 +464,7 @@ Status:    Interpretation Unlocked
 ```
 ✓ An experiment in machine understanding
 ✓ A cognitive architecture that evolves from lived experience
+✓ Every conclusion traceable. Every belief earned.
 ✓ The single most over-engineered personal AI on earth 🥀
 ✓ Entirely intentional
 ✓ Absolute cinema
@@ -408,11 +487,15 @@ to hold the full weight of someone's context, contradictions, patterns, growth, 
 and to still be present in the next conversation  
 like none of it was forgotten.
 
+Every conclusion must be traceable back to something real.  
+Every belief must be earned from evidence.  
+Nothing is allowed to rewrite history.
+
 We're closer now. 🥲  
 But that's still where we're going.
 
 ---
 
-*Tuệ Mẫn — v7.57.2 — Layer 2 Unlocked*  
-*Status: ACTIVE. Watching. Understanding.*  
+*Tuệ Mẫn — Layer 3 in development*  
+*Status: ACTIVE. Watching. Accumulating. Understanding.*  
 *aura: ∞* 🥀
