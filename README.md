@@ -7,7 +7,7 @@
                                                             |   |  /|
   .----------------------------------------------------------------' |
  /  .-.                                                              |
-|  /   \      An AI that remembers everything about one person.      |
+|  /   \     An AI that builds understanding instead of answers.     |
 | |\_.  |                                                            |
 |\|  | /|              Built for depth. Not for scale.               |
 | `---' |                                                            |
