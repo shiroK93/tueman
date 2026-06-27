@@ -1,241 +1,225 @@
 """
 ╔═══════════════════════════════════════════════════════════════╗
-║                     TUỆ MẪN 7.57.2                            ║
-║                THE MEMORY FOUNDATION (FROZEN)                 ║
+║                     TUỆ MẪN 7.58.0                            ║
+║             THE COGNITIVE FOUNDATION (FROZEN)                 ║
 ╚═══════════════════════════════════════════════════════════════╝
 
-"Before meaning,
-there must be memory.
+"Memory preserves experience.
 
-Before memory,
-there must be evidence."
+Reasoning organizes experience.
 
-7.57 is not intelligence.
+Beliefs emerge from both."
 
-7.57 is the foundation that allows intelligence
-to emerge from lived experience.
+7.58 is not intelligence.
 
-It introduces the first structured pathway between:
+7.58 establishes the complete cognitive foundation
+upon which intelligence can slowly emerge.
+
+For the first time, the system can transform
+raw observations into structured events.
+
+Observation is never rewritten.
+
+Meaning is never stored directly.
+
+Every conclusion remains traceable back
+to evidence.
+
+───────────────────────────────────────────────────────────────
+COGNITIVE PIPELINE
+───────────────────────────────────────────────────────────────
 
 Observation
-↓
+        ↓
 Mention
-↓
+        ↓
 Entity
-↓
-Memory
-↓
-Retrieval
+        ↓
+Argument Resolution
+        ↓
+Reasoning Session
 
-The system no longer stores only text.
+Layer 2 no longer produces isolated entities.
 
-It begins to recognize recurring people,
-projects,
-concepts,
-tools,
-and ideas.
-
-A mention is not an entity.
-An entity is not a belief.
-A belief is not reality.
-
-Each layer remains isolated.
-
-Evidence may create entities.
-Entities may support retrieval.
-Retrieval may support reasoning.
-
-Nothing may rewrite observation.
+It produces complete event hypotheses together
+with uncertainty distributions and execution
+provenance.
 
 ───────────────────────────────────────────────────────────────
 CURRENT STATUS
 ───────────────────────────────────────────────────────────────
 
-✓ Mention Extraction Layer
+✓ Observation Layer
+✓ Mention Extraction
 ✓ Entity Registry
 ✓ Alias Resolution
 ✓ Entity Linking
-✓ BM25 Retrieval
+✓ Event Graph
+✓ Argument Resolution
+✓ CSP Optimization
+✓ Constraint Evaluation
+✓ Hypothesis Distribution
 ✓ Benchmark Framework
-✓ Gold Dataset Pipeline
-✓ Benchmark History Tracking
 
 ───────────────────────────────────────────────────────────────
 RESEARCH STATUS
 ───────────────────────────────────────────────────────────────
 
-Layer 1.5: COMPLETE
+Layer 2: COMPLETE
 
-Code:      FROZEN
-Extractor: LOCKED
-Benchmark: ACTIVE
-Dataset:   GROWING
+Architecture: FROZEN
+Contracts:    LOCKED
+Benchmarks:   PASSING
 
 Current objective:
 
-```
-Collect evidence before building cognition.
-```
-
-No new reasoning layers will be added
-until extraction quality is measured
-against real-world data.
+    Build persistent knowledge from events.
 
 ───────────────────────────────────────────────────────────────
 
-This module exists to answer one question:
+This module answers:
 
-```
-"What is being talked about?"
-```
+    "What happened?"
 
 before attempting to answer:
 
-```
-"What does it mean?"
-```
+    "What is true?"
 
 ───────────────────────────────────────────────────────────────
 
-Version: 7.57.0
-Status: DATA COLLECTION PHASE
+Version: 7.58.0
+Status: LAYER 3 DEVELOPMENT
 Contract: LOCKED
 """
 """
 ───────────────────────────────────────────────────────────────
-7.57 ROADMAP (POST-LAYER 1.5 FREEZE)
+7.58 ROADMAP (POST-LAYER 2 FREEZE)
 ───────────────────────────────────────────────────────────────
 
 COMPLETED
 ─────────
+
 ✓ Observation Pipeline
-✓ Mention Extraction Layer
-✓ Recognition / Discovery Separation
-✓ Candidate Discovery
-✓ Candidate Evidence Store
+✓ Mention Extraction
 ✓ Entity Registry
 ✓ Alias Resolution
 ✓ Entity Linking
-✓ Version-based Alias Cache
-✓ BM25 Retrieval
+
+✓ Predicate Detection
+✓ Argument Hypothesis Generation
+✓ Role Scoring
+✓ CSP Preprocessing
+✓ AC-3 Domain Pruning
+✓ Exact DFS Search
+✓ Constraint Evaluation
+✓ Hypothesis Distribution
+✓ ReasoningSession Artifact
+
 ✓ Benchmark Framework
-✓ Gold Dataset Pipeline
-✓ Benchmark History Framework
-✓ Production / Benchmark Decoupling
+✓ Gold Dataset
+✓ Benchmark History
 
-IN PROGRESS
-───────────
-[ ] Expand GOLD_MENTIONS_TEST
-Target:
-20 → 50 → 100 → 200 samples
+───────────────────────────────────────────────────────────────
+LAYER STATUS
+───────────────────────────────────────────────────────────────
 
-[ ] Benchmark stability verification
-Run repeated benchmark passes
-Verify deterministic results
-
-HIGH PRIORITY
-─────────────
-✓ fingerprint UNIQUE constraint
-✓ INSERT OR IGNORE for observations
-[ ] Duplicate fingerprint audit query
-
-MEDIUM PRIORITY
-───────────────
-✓ LLM extraction IGNORECASE helper
-✓ benchmark_history.json (version + TP/FP/FN per phase)
-[ ] BM25 cache size limit
-[ ] Observation retrieval pagination
-[ ] Replace INSERT OR REPLACE with
-ON CONFLICT ... DO UPDATE
-(preserve future metadata)
-
-BENCHMARK GOALS
-───────────────
-Recognition
-[ ] Dict-only Span F1 @100 samples
-[ ] Hybrid Span F1 @100 samples
-[ ] Dict vs Hybrid delta
-
-Discovery
-[ ] Raw Regex Precision / Recall
-[ ] Filtered Regex Precision / Recall
-
-Pipeline
-[ ] End-to-End Coverage F1
-[ ] Runtime scaling vs dataset size
-
-ERROR ANALYSIS
-──────────────
-[ ] Proper nouns
-[ ] Technologies
-[ ] Concepts
-[ ] Projects
-[ ] Multi-word entities
-[ ] Vietnamese capitalization edge cases
-
-UNLOCK CONDITIONS FOR LAYER 2
-─────────────────────────────
-
-Minimum
-Dataset ≥ 100 samples
-
-Preferred
-Dataset ≥ 200 samples
-
-Required
-Recognition Span F1 ≥ 85%
-Discovery benchmark stable
-End-to-End benchmark stable
-Deterministic across repeated runs
-
-Only after these conditions are satisfied:
-
+Layer 0
 Observation
-│
-▼
-Mention
-│
-▼
-Entity
-│
-▼
-Event
+STATUS: LOCKED
 
-ARCHITECTURE STATUS
-───────────────────
+Layer 1
+Entity Extraction
+STATUS: LOCKED
 
-Layer 1.5
-STATUS: FROZEN
+Layer 2
+Event Resolution
+STATUS: LOCKED
 
 Only:
-• Bug fixes
-• Performance improvements
-• Benchmark improvements
 
-No architectural expansion until Layer 2 begins.
+• bug fixes
+• benchmark improvements
+• performance optimization
+
+No architectural expansion.
 
 ───────────────────────────────────────────────────────────────
-Target release:
-Mind v7.57.3 → Benchmark maturity
-Mind v7.58.x → Layer 2 (Event Graph)
-
-LOCKED UNTIL FURTHER NOTICE.
+CURRENT DEVELOPMENT
 ───────────────────────────────────────────────────────────────
-"""
-"""
-MIGRATION PLAN LAYER 3 (note)
-Legacy Belief
+
+Layer 3
+Persistent Beliefs
+
+Goals
+
+[ ] Evidence accumulation
+
+[ ] Belief objects
+
+[ ] UnknownValue
+
+[ ] Belief confidence
+
+[ ] Contradiction handling
+
+[ ] Belief revision
+
+[ ] Event merging
+
+[ ] Temporal reasoning
+
+───────────────────────────────────────────────────────────────
+LONG-TERM ROADMAP
+───────────────────────────────────────────────────────────────
+
+Layer 0
+Observation
+
 ↓
 
-Event Adapter (temporary)
+Layer 1
+Extraction
 
 ↓
 
-New Belief
+Layer 2
+Interpretation
 
 ↓
 
-Delete Adapter
+Layer 3
+Beliefs
+
+↓
+
+Layer 4
+Reflection
+
+↓
+
+Layer 5
+Identity
+
+───────────────────────────────────────────────────────────────
+
+Current focus
+
+Build knowledge.
+
+Not intelligence.
+
+Intelligence will emerge only after
+knowledge becomes persistent.
+
+───────────────────────────────────────────────────────────────
+
+Target release
+
+7.58.x
+Layer 3
+
+LOCKED UNTIL FURTHER NOTICE
+───────────────────────────────────────────────────────────────
 """
 
 import os
@@ -253,9 +237,11 @@ import hashlib
 import uuid
 import unicodedata
 from collections.abc import Iterable
+from collections import deque
 from enum import Enum
+from types import MappingProxyType
 from dataclasses import dataclass, field, asdict
-from typing import Optional, Callable, Any, List, Dict, TypedDict, Tuple
+from typing import Optional, Callable, Any, List, Dict, TypedDict, Tuple, Sequence
 from flask import Flask, request, jsonify
 import requests
 from dotenv import load_dotenv
@@ -264,7 +250,7 @@ from abc import ABC, abstractmethod
 from rank_bm25 import BM25Okapi
 load_dotenv()
 
-BOT_VERSION = "7.57.2"
+BOT_VERSION = "7.57.4"
 
 # ==================== TIMING HELPER ====================
 class _T:
@@ -487,7 +473,8 @@ class CognitiveGraph:
                 data = json.load(f)
                 self.nodes = {n["id"]: CognitiveNode.from_dict(n) for n in data.get("nodes", [])}
                 self.edges = [CognitiveEdge.from_dict(e) for e in data.get("edges", [])]
-        except Exception: pass
+        except Exception:
+                log.debug("[CognitiveGraph._load] failed to load graph file, starting fresh", exc_info=True)
 
     def save(self):
         if not self.filepath: return
@@ -779,7 +766,7 @@ def init_db():
     c.execute("CREATE TABLE IF NOT EXISTS style_profile (sender_id TEXT PRIMARY KEY, reply_length_pref REAL DEFAULT 50.0, avg_msg_len REAL DEFAULT 50.0, msg_count INTEGER DEFAULT 0)")
     for ddl in ["ALTER TABLE facts ADD COLUMN importance INTEGER DEFAULT 5","ALTER TABLE facts ADD COLUMN updated_at DATETIME DEFAULT CURRENT_TIMESTAMP","ALTER TABLE facts ADD COLUMN confidence REAL DEFAULT 0.8","ALTER TABLE facts ADD COLUMN source_message TEXT DEFAULT ''"]:
         try: c.execute(ddl)
-        except: pass
+        except Exception: log.debug("[init_db] ALTER TABLE facts skipped (column may already exist): %s", ddl)
     c.execute("CREATE TABLE IF NOT EXISTS fact_candidates (sender_id TEXT NOT NULL, key TEXT NOT NULL, value TEXT NOT NULL, score INTEGER DEFAULT 1, rejection_reason TEXT DEFAULT NULL, last_seen DATETIME DEFAULT CURRENT_TIMESTAMP, confidence REAL DEFAULT 0.0, source_message TEXT DEFAULT '', PRIMARY KEY (sender_id, key))")
     c.execute("CREATE TABLE IF NOT EXISTS experiences (id INTEGER PRIMARY KEY AUTOINCREMENT, sender_id TEXT NOT NULL, user_message TEXT NOT NULL, intent TEXT DEFAULT '', response TEXT NOT NULL, decision TEXT DEFAULT 'respond', outcome INTEGER DEFAULT NULL, created_at DATETIME DEFAULT CURRENT_TIMESTAMP)")
     c.execute("CREATE TABLE IF NOT EXISTS beliefs (id INTEGER PRIMARY KEY AUTOINCREMENT, sender_id TEXT NOT NULL, belief TEXT NOT NULL, confidence REAL DEFAULT 0.5, evidence_count INTEGER DEFAULT 1, last_updated DATETIME DEFAULT CURRENT_TIMESTAMP)")
@@ -828,7 +815,7 @@ def migrate_belief_system_v47():
         "ALTER TABLE experiences ADD COLUMN features_json TEXT DEFAULT ''",
     ]:
         try: c.execute(ddl)
-        except: pass
+        except Exception: log.debug("[migrate_belief_system_v47] DDL migration skipped (column may already exist): %s", ddl)
     c.execute("""CREATE TABLE IF NOT EXISTS belief_connections (id INTEGER PRIMARY KEY AUTOINCREMENT, sender_id TEXT NOT NULL, from_id INTEGER NOT NULL, to_id INTEGER NOT NULL, conn_type TEXT NOT NULL DEFAULT 'related', strength REAL DEFAULT 0.5, created_at DATETIME DEFAULT CURRENT_TIMESTAMP, UNIQUE(sender_id, from_id, to_id, conn_type))""")
     c.execute("""CREATE TABLE IF NOT EXISTS evidence (id INTEGER PRIMARY KEY AUTOINCREMENT, sender_id TEXT NOT NULL, tag TEXT NOT NULL, outcome INTEGER NOT NULL, exp_id INTEGER NOT NULL DEFAULT 0, created_at DATETIME DEFAULT CURRENT_TIMESTAMP, UNIQUE(sender_id, tag, exp_id))""")
     c.execute("CREATE INDEX IF NOT EXISTS idx_ev_time ON evidence(sender_id, created_at)")
@@ -992,7 +979,8 @@ Return ONLY JSON list of feature names.
                         self.sender_id, self.claim, self.source, [p], source_features
                     )
                     self.active_predictions.append(pred)
-        except: pass
+        except Exception:
+            log.debug("[generate_predictions] failed to generate predictions from LLM, skipping", exc_info=True)
 
     def test_predictions(self, features: Features):
         feat_dict = asdict(features)
@@ -1067,7 +1055,8 @@ DO NOT use psychological terms. Return ONLY JSON list.
                     sender_id=self.sender_id
                 )
                 self.hypotheses.append(hyp)
-        except: pass
+        except Exception:
+            log.debug("[HypothesisMarket.generate] failed to generate hypotheses from LLM, skipping", exc_info=True)
             
     def get_top_k(self, k: int = 3) -> list[StructuredHypothesis]:
         return sorted(self.hypotheses, key=lambda h: h.confidence, reverse=True)[:k]
@@ -1287,7 +1276,8 @@ class PredictionAuditSystem:
                     by_feature[f]["total"] += 1
                     if result == "confirmed":
                         by_feature[f]["correct"] += 1
-            except: pass
+            except Exception:
+                log.debug("[report] failed to parse predicted_features JSON, skipping row", exc_info=True)
         
         for source, stats in by_source.items():
             stats["accuracy"] = stats["correct"] / stats["total"] if stats["total"] > 0 else 0.0
@@ -1406,7 +1396,7 @@ class EntityRegistry:
             mention_id INTEGER PRIMARY KEY AUTOINCREMENT, observation_id INTEGER NOT NULL, entity_id TEXT, surface_form TEXT NOT NULL, normalized_surface TEXT NOT NULL, start_char INTEGER, end_char INTEGER, created_at REAL NOT NULL
         )""")
         try: c.execute("ALTER TABLE mos_entity_mentions ADD COLUMN normalized_surface TEXT")
-        except: pass
+        except Exception: log.debug("[EntityRegistry._init_tables] ALTER TABLE mos_entity_mentions skipped (column may already exist)")
         c.execute("CREATE INDEX IF NOT EXISTS idx_mentions_obs_norm ON mos_entity_mentions(observation_id, normalized_surface)")
         c.execute("UPDATE mos_entity_mentions SET normalized_surface = LOWER(TRIM(surface_form)) WHERE normalized_surface IS NULL")
         c.execute("CREATE INDEX IF NOT EXISTS idx_mentions_obs ON mos_entity_mentions(observation_id)")
@@ -1422,7 +1412,7 @@ class EntityRegistry:
             "ALTER TABLE mos_entity_candidates ADD COLUMN right_context TEXT",
         ]:
             try: c.execute(ddl)
-            except: pass
+            except Exception: log.debug("[EntityRegistry._init_tables] DDL migration skipped (column may already exist): %s", ddl)
         c.execute("""CREATE TABLE IF NOT EXISTS mos_extraction_audit (
             id INTEGER PRIMARY KEY AUTOINCREMENT, observation_id INTEGER NOT NULL, extractor_version TEXT NOT NULL, dict_count INTEGER DEFAULT 0, llm_count INTEGER DEFAULT 0, total_count INTEGER DEFAULT 0, runtime_ms INTEGER DEFAULT 0, created_at REAL NOT NULL
         )""")
@@ -1688,7 +1678,1785 @@ Return ONLY a JSON list of strings (the exact surface forms).
 _mention_extractor = MentionExtractor(_router, _entity_registry)
 
 # ╔═══════════════════════════════════════════════════════════════╗
-# ║  MONOLITH: GOLD DATASET & BENCHMARK (AUTO-SPAN)               ║
+# ║  LAYER 2.1: PREDICATE LEXICON & EXTRACTOR                     ║
+# ╚═══════════════════════════════════════════════════════════════╝
+
+@dataclass
+class PredicateEntry:
+    predicate_id: str
+    canonical: str
+    polarity: int = 0
+    transitive: bool = True
+
+@dataclass
+class PredicateSpan:
+    predicate_id: str
+    surface: str
+    canonical: str
+    confidence: float
+    start: int
+    end: int
+
+@dataclass
+class PredicateMention:
+    mention_id: int
+    observation_id: int
+    predicate_id: str
+    surface: str
+    confidence: float
+    extractor_version: str
+    created_at: float
+
+class PredicateLexicon:
+    def __init__(self, db_path: str):
+        self.db_path = db_path
+        self._init_tables()
+        self._alias_dict: dict[str, list[str]] = {}
+        self._predicate_cache: dict[str, PredicateEntry] = {}
+        self._features_cache: dict[str, set[str]] = {}
+        self._roles_cache: dict[str, list[str]] = {}
+        self._cache_ts = 0
+        self._cache_ttl = 300
+        self._cached_db_version: int = -1
+        
+    def _init_tables(self):
+        conn = sqlite3.connect(self.db_path, timeout=DB_TIMEOUT, check_same_thread=False)
+        c = conn.cursor()
+        c.execute("""CREATE TABLE IF NOT EXISTS mos_predicates (
+            predicate_id TEXT PRIMARY KEY, canonical TEXT NOT NULL,
+            polarity INTEGER DEFAULT 0, transitive INTEGER DEFAULT 1,
+            created_at REAL NOT NULL
+        )""")
+        c.execute("""CREATE TABLE IF NOT EXISTS mos_predicate_aliases (
+            alias TEXT NOT NULL, predicate_id TEXT NOT NULL,
+            confidence REAL DEFAULT 1.0, created_at REAL NOT NULL,
+            PRIMARY KEY (alias, predicate_id)
+        )""")
+        c.execute("""CREATE TABLE IF NOT EXISTS mos_predicate_features (
+            predicate_id TEXT NOT NULL, feature TEXT NOT NULL,
+            PRIMARY KEY (predicate_id, feature)
+        )""")
+        c.execute("""CREATE TABLE IF NOT EXISTS mos_predicate_roles (
+            predicate_id TEXT NOT NULL, role TEXT NOT NULL, priority INTEGER DEFAULT 0,
+            PRIMARY KEY (predicate_id, role)
+        )""")
+        c.execute("""CREATE TABLE IF NOT EXISTS mos_predicate_mentions (
+            mention_id INTEGER PRIMARY KEY AUTOINCREMENT,
+            observation_id INTEGER NOT NULL, predicate_id TEXT NOT NULL,
+            surface TEXT NOT NULL, confidence REAL NOT NULL,
+            extractor_version TEXT NOT NULL, created_at REAL NOT NULL
+        )""")
+        c.execute("CREATE INDEX IF NOT EXISTS idx_pred_mentions_obs ON mos_predicate_mentions(observation_id)")
+        c.execute("""CREATE TABLE IF NOT EXISTS mos_predicate_candidates (
+            normalized_surface TEXT PRIMARY KEY, count INTEGER DEFAULT 1,
+            sample_context TEXT, first_seen REAL NOT NULL, last_seen REAL NOT NULL
+        )""")
+        c.execute("""CREATE TABLE IF NOT EXISTS mos_predicate_meta (
+            key TEXT PRIMARY KEY, value INTEGER NOT NULL
+        )""")
+        c.execute("INSERT OR IGNORE INTO mos_predicate_meta (key, value) VALUES ('version', 0)")
+        conn.commit(); conn.close()
+
+    def _touch_version(self, conn):
+        conn.execute("UPDATE mos_predicate_meta SET value = value + 1 WHERE key='version'")
+
+    def _load_cache(self):
+        conn = sqlite3.connect(self.db_path, timeout=DB_TIMEOUT, check_same_thread=False)
+        c = conn.cursor()
+        c.execute("SELECT value FROM mos_predicate_meta WHERE key='version'")
+        db_version = int(c.fetchone()[0] or 0)
+        if time.time() - self._cache_ts < self._cache_ttl and db_version == self._cached_db_version:
+            conn.close()
+            return
+        c.execute("SELECT predicate_id, canonical, polarity, transitive FROM mos_predicates")
+        self._predicate_cache = {}
+        for p_id, canon, pol, trans in c.fetchall():
+            self._predicate_cache[p_id] = PredicateEntry(
+                predicate_id=p_id, canonical=canon, polarity=pol, transitive=bool(trans)
+            )
+        c.execute("SELECT predicate_id, feature FROM mos_predicate_features")
+        self._features_cache = {}
+        for p_id, feat in c.fetchall():
+            if p_id not in self._features_cache: self._features_cache[p_id] = set()
+            self._features_cache[p_id].add(feat)
+        c.execute("SELECT predicate_id, role FROM mos_predicate_roles ORDER BY priority DESC")
+        self._roles_cache = {}
+        for p_id, role in c.fetchall():
+            if p_id not in self._roles_cache: self._roles_cache[p_id] = []
+            self._roles_cache[p_id].append(role)
+        c.execute("SELECT alias, predicate_id FROM mos_predicate_aliases")
+        self._alias_dict = {}
+        for a, p_id in c.fetchall():
+            if a not in self._alias_dict: self._alias_dict[a] = []
+            self._alias_dict[a].append(p_id)
+        conn.close()
+        self._cache_ts = time.time()
+        self._cached_db_version = db_version
+
+    def get_features(self, predicate_id: str) -> set[str]:
+        self._load_cache()
+        return self._features_cache.get(predicate_id, set())
+
+    def get_predicate_ids(self, alias: str) -> list[str]:
+        self._load_cache()
+        return self._alias_dict.get(normalize_surface(alias), [])
+
+    def get_predicate(self, predicate_id: str) -> Optional[PredicateEntry]:
+        self._load_cache()
+        return self._predicate_cache.get(predicate_id)
+
+    def add_predicate(self, canonical: str, aliases: list[str], features: list[str] = None,
+                      polarity: int = 0, transitive: bool = True, preferred_roles: list = None):
+        p_id = canonical
+        ts = time.time()
+        conn = sqlite3.connect(self.db_path, timeout=DB_TIMEOUT, check_same_thread=False)
+        with conn:
+            c = conn.cursor()
+            c.execute("""INSERT OR REPLACE INTO mos_predicates
+                (predicate_id, canonical, polarity, transitive, created_at)
+                VALUES (?, ?, ?, ?, ?)""",
+                (p_id, canonical, polarity, int(transitive), ts))
+            if features:
+                for feat in features:
+                    c.execute("INSERT OR IGNORE INTO mos_predicate_features (predicate_id, feature) VALUES (?, ?)", (p_id, feat))
+            if preferred_roles:
+                for i, role in enumerate(preferred_roles):
+                    c.execute("INSERT OR REPLACE INTO mos_predicate_roles (predicate_id, role, priority) VALUES (?, ?, ?)", (p_id, role, i))
+            for alias in aliases:
+                c.execute("""INSERT OR REPLACE INTO mos_predicate_aliases
+                    (alias, predicate_id, confidence, created_at) VALUES (?, ?, 1.0, ?)""",
+                    (normalize_surface(alias), p_id, ts))
+            self._touch_version(conn)
+        log.info(f"[PREDICATE] Added '{canonical}'")
+
+    def link_mention(self, observation_id: int, surface: str, predicate_id: str,
+                     confidence: float, extractor_version: str):
+        ts = time.time()
+        conn = sqlite3.connect(self.db_path, timeout=DB_TIMEOUT, check_same_thread=False)
+        c = conn.cursor()
+        c.execute("""INSERT INTO mos_predicate_mentions
+            (observation_id, predicate_id, surface, confidence, extractor_version, created_at)
+            VALUES (?, ?, ?, ?, ?, ?)""",
+            (observation_id, predicate_id, surface, confidence, extractor_version, ts))
+        mention_id = c.lastrowid
+        conn.commit(); conn.close()
+        return PredicateMention(
+            mention_id=mention_id, observation_id=observation_id,
+            predicate_id=predicate_id, surface=surface,
+            confidence=confidence, extractor_version=extractor_version, created_at=ts
+        )
+
+    def link_candidate(self, surface: str, context_text: str):
+        norm = normalize_surface(surface)
+        conn = sqlite3.connect(self.db_path, timeout=DB_TIMEOUT, check_same_thread=False)
+        c = conn.cursor()
+        c.execute("SELECT 1 FROM mos_predicate_aliases WHERE alias=?", (norm,))
+        if c.fetchone():
+            conn.close()
+            return
+        c.execute("""INSERT INTO mos_predicate_candidates (normalized_surface, count, sample_context, first_seen, last_seen)
+                     VALUES (?, 1, ?, ?, ?)
+                     ON CONFLICT(normalized_surface) DO UPDATE SET count = count + 1, last_seen = ?""",
+                  (norm, context_text[:100], time.time(), time.time(), time.time()))
+        conn.commit(); conn.close()
+
+_predicate_lexicon = PredicateLexicon(DB_PATH)
+_predicate_lexicon._load_cache()
+if not _predicate_lexicon._predicate_cache:
+    _predicate_lexicon.add_predicate("fix", ["fix", "sửa", "vá", "debug", "resolve"],
+                                     features=["action", "technical", "change"], polarity=1,
+                                     preferred_roles=["actor", "object", "tool"])
+    _predicate_lexicon.add_predicate("build", ["build", "xây", "phát triển", "code"],
+                                     features=["action", "creation"], polarity=1,
+                                     preferred_roles=["actor", "object", "tool"])
+    _predicate_lexicon.add_predicate("deploy", ["deploy", "release", "push"],
+                                     features=["action", "release"], polarity=1,
+                                     preferred_roles=["actor", "object"])
+    _predicate_lexicon.add_predicate("use", ["use", "dùng", "sử dụng"],
+                                     features=["action", "interaction"], polarity=0,
+                                     preferred_roles=["actor", "object", "tool"])
+    _predicate_lexicon.add_predicate("study", ["study", "học", "đọc"],
+                                     features=["action", "mental", "acquisition"], polarity=1,
+                                     preferred_roles=["actor", "object"])
+    _predicate_lexicon.add_predicate("play", ["play", "chơi"],
+                                     features=["action", "entertainment"], polarity=1,
+                                     preferred_roles=["actor", "object"])
+    _predicate_lexicon.add_predicate("like", ["like", "thích", "ưa"],
+                                     features=["preference", "mental", "positive"], polarity=1,
+                                     preferred_roles=["actor", "object"])
+    _predicate_lexicon.add_predicate("hate", ["hate", "ghét", "không thích"],
+                                     features=["preference", "mental", "negative"], polarity=-1,
+                                     preferred_roles=["actor", "object"])
+
+
+class PredicateExtractor:
+    """L2.1: Dict-only extraction. Deterministic. No LLM."""
+
+    def __init__(self, lexicon: 'PredicateLexicon',
+                 known_aliases_override: Iterable[tuple] | None = None):
+        self.lexicon = lexicon
+        self.version = "pred_dict_v1.2_DB_VERSIONED"
+
+        self._cached_patterns: Optional[list] = None
+        self._cached_db_version: int = 0
+        self._cache_pinned: bool = False
+
+        if known_aliases_override is not None:
+            self._build_cache(list(known_aliases_override))
+            self._cache_pinned = True
+
+    def _build_cache(self, aliases_data: list):
+        self._cached_patterns = []
+        seen = set()
+        for alias, p_id in aliases_data:
+            alias_low = normalize_surface(alias)
+            if alias_low in seen: continue
+            seen.add(alias_low)
+            pattern = re.compile(rf"(?<!\w){re.escape(alias)}(?!\w)", re.IGNORECASE)
+            self._cached_patterns.append((alias_low, pattern, p_id))
+
+    def _ensure_cache(self):
+        if self._cache_pinned: return
+        self.lexicon._load_cache()
+        if self.lexicon._cached_db_version != self._cached_db_version:
+            aliases_data = []
+            for alias, p_ids in self.lexicon._alias_dict.items():
+                for p_id in p_ids:
+                    aliases_data.append((alias, p_id))
+            self._build_cache(aliases_data)
+            self._cached_db_version = self.lexicon._cached_db_version
+
+    def extract_spans(self, text: str) -> list[PredicateSpan]:
+        self._ensure_cache()
+        results = []
+        seen_spans = set()
+
+        for alias_low, pattern, p_id in self._cached_patterns:
+            for match in pattern.finditer(text):
+                start, end = match.start(), match.end()
+                if (start, end) in seen_spans: continue
+
+                pred = self.lexicon.get_predicate(p_id)
+                if not pred: continue
+
+                results.append(PredicateSpan(
+                    predicate_id=p_id, surface=match.group(0),
+                    canonical=pred.canonical, confidence=1.0,
+                    start=start, end=end
+                ))
+                seen_spans.add((start, end))
+
+        results.sort(key=lambda x: x.start)
+        return results
+
+    def extract_and_link(self, text: str, observation_id: int) -> list[PredicateMention]:
+        spans = self.extract_spans(text)
+        mentions = []
+        for span in spans:
+            mention = self.lexicon.link_mention(
+                observation_id=observation_id, surface=span.surface,
+                predicate_id=span.predicate_id, confidence=span.confidence,
+                extractor_version=self.version
+            )
+            mentions.append(mention)
+        return mentions
+
+_predicate_extractor = PredicateExtractor(_predicate_lexicon)
+
+# Predicate Candidate Discovery (async, bounded queue + LRU)
+import queue as _queue
+from collections import OrderedDict as _OrderedDict
+
+_pred_discovery_queue = _queue.Queue(maxsize=5000)
+_pred_discovery_lru = _OrderedDict()
+_pred_discovery_lru_size = 500
+
+class PredicateCandidateDiscovery:
+    def __init__(self, router: 'ProviderRouter', lexicon: 'PredicateLexicon'):
+        self.router = router
+        self.lexicon = lexicon
+
+    def discover(self, text: str):
+        system = """Extract all verbs/predicates (actions, mental states, preferences) from the text.
+Return ONLY a JSON list of strings (the exact surface forms).
+Example: Text: "Tao vừa sửa bug bằng Python" -> ["sửa"]
+"""
+        try:
+            raw = self.router.generate(system, [{"role": "user", "content": text}], max_tokens=50)
+            surfaces = json.loads(raw.replace("```json", "").replace("```", "").strip())
+            for surface in surfaces:
+                if not self.lexicon.get_predicate_ids(surface):
+                    self.lexicon.link_candidate(surface, text)
+        except: pass
+
+_predicate_discovery = PredicateCandidateDiscovery(_router, _predicate_lexicon)
+
+def _pred_discovery_worker():
+    while True:
+        text = _pred_discovery_queue.get()
+        try:
+            text_key = normalize_surface(text)
+            if text_key in _pred_discovery_lru:
+                _pred_discovery_queue.task_done()
+                continue
+            _pred_discovery_lru[text_key] = True
+            if len(_pred_discovery_lru) > _pred_discovery_lru_size:
+                _pred_discovery_lru.popitem(last=False)
+            _predicate_discovery.discover(text)
+        except Exception as e:
+            log.debug(f"[PRED-DISC] error: {e}")
+        finally:
+            _pred_discovery_queue.task_done()
+
+threading.Thread(target=_pred_discovery_worker, daemon=True).start()
+
+
+GOLD_PREDICATES_TEST = [
+    {"text": "Tao vừa sửa bug trong Tuệ Mẫn bằng Python", "predicates": ["fix"]},
+    {"text": "Tuệ Mẫn dùng SQLite", "predicates": ["use"]},
+    {"text": "Tao đang học Khoa học Máy tính", "predicates": ["study"]},
+    {"text": "Hôm qua chơi Dead Cells", "predicates": ["play"]},
+    {"text": "Tao deploy lên production", "predicates": ["deploy"]},
+    {"text": "Tao thích dùng Flask hơn Django", "predicates": ["like", "use"]},
+    {"text": "Tao ghét production mindset", "predicates": ["hate"]},
+    {"text": "Tao mới update Neovim", "predicates": []},
+    {"text": "Tao migrate từ MySQL sang PostgreSQL", "predicates": []},
+    {"text": "Tao restart Nginx", "predicates": []},
+]
+
+def run_benchmark_predicate():
+    from collections import Counter
+    snap_aliases = [
+        ("fix", "fix"), ("sửa", "fix"), ("vá", "fix"), ("debug", "fix"),
+        ("use", "use"), ("dùng", "use"), ("sử dụng", "use"),
+        ("study", "study"), ("học", "study"), ("đọc", "study"),
+        ("play", "play"), ("chơi", "play"),
+        ("deploy", "deploy"), ("release", "deploy"),
+        ("like", "like"), ("thích", "like"), ("ưa", "like"),
+        ("hate", "hate"), ("ghét", "hate"),
+    ]
+    extractor = PredicateExtractor(_predicate_lexicon, known_aliases_override=snap_aliases)
+
+    tp = fp = fn = 0
+    errors = []
+
+    for i, item in enumerate(GOLD_PREDICATES_TEST):
+        text = item["text"]
+        gold_set = set(item["predicates"])
+
+        spans = extractor.extract_spans(text)
+        proposed_canonicals = set()
+        for s in spans:
+            pred_entry = extractor.lexicon.get_predicate(s.predicate_id)
+            if pred_entry:
+                proposed_canonicals.add(pred_entry.canonical)
+
+        matched_gold = gold_set & proposed_canonicals
+        missed_gold = gold_set - proposed_canonicals
+
+        tp += len(matched_gold)
+        fn += len(missed_gold)
+
+        if not matched_gold and proposed_canonicals:
+            fp += len(proposed_canonicals)
+
+        if matched_gold != gold_set:
+            errors.append({
+                "i": i, "text": text[:40],
+                "gold": list(gold_set),
+                "pred": list(proposed_canonicals)
+            })
+
+    p = tp / (tp + fp) if (tp + fp) > 0 else 0.0
+    r = tp / (tp + fn) if (tp + fn) > 0 else 0.0
+    f1 = 2*p*r/(p+r) if (p+r) > 0 else 0.0
+
+    print("═" * 54)
+    print(f"  PREDICATE BENCHMARK (Level 2.1)")
+    print("═" * 54)
+    print(f"  {'Precision':15s}  {p:>10.2%}")
+    print(f"  {'Recall':15s}  {r:>10.2%}")
+    print(f"  {'F1':15s}  {f1:>10.2%}")
+    print("─" * 54)
+    if errors:
+        print(f"  Errors ({len(errors)}):")
+        for e in errors[:5]:
+            print(f"    [{e['i']}] \"{e['text']}...\"")
+            print(f"      Gold: {e['gold']} | Pred: {e['pred']}")
+    print("═" * 54)
+
+# ╔═══════════════════════════════════════════════════════════════╗
+# ║  LAYER 2.2: ARGUMENT HYPOTHESIS EXPANSION                       ║
+# ╚═══════════════════════════════════════════════════════════════╝
+
+class Role(Enum):
+    """Role types hardcoded. Ngôn ngữ học đã định nghĩa rõ."""
+    ACTOR = "actor"
+    OBJECT = "object"
+    TOOL = "tool"
+    TARGET = "target"
+    SOURCE = "source"
+    DESTINATION = "destination"
+    BENEFICIARY = "beneficiary"
+    EXPERIENCER = "experiencer"
+    LOCATION = "location"
+    TIME = "time"
+
+@dataclass(frozen=True)
+class RoleSchema:
+    """Schema cho predicate. Immutable. Grammar, not knowledge."""
+    required: frozenset[Role] = field(default_factory=frozenset)
+    optional: frozenset[Role] = field(default_factory=frozenset)
+    repeatable: frozenset[Role] = field(default_factory=frozenset)
+    
+    def all_roles(self) -> frozenset[Role]:
+        return self.required | self.optional
+
+SCHEMAS: MappingProxyType[str, RoleSchema] = MappingProxyType({
+    "fix": RoleSchema(
+        required=frozenset({Role.ACTOR, Role.OBJECT}),
+        optional=frozenset({Role.TOOL}),
+        repeatable=frozenset({Role.TOOL})
+    ),
+    "build": RoleSchema(
+        required=frozenset({Role.ACTOR, Role.OBJECT}),
+        optional=frozenset({Role.TOOL}),
+        repeatable=frozenset({Role.TOOL})
+    ),
+    "deploy": RoleSchema(
+        # -----------------------------------------------------------------------
+        # TEMPORARY OBSERVATION-LEVEL SCHEMA
+        #
+        # L2.4 only reasons over a single observation.
+        #
+        # Spoken Vietnamese frequently omits semantic arguments:
+        #
+        #   "Tao deploy lên production."
+        #
+        # still semantically implies:
+        #
+        #   deploy(
+        #       actor  = Tao,
+        #       object = UNKNOWN,   ← exists; not stated
+        #       target = production
+        #   )
+        #
+        # However, L2.4 cannot yet distinguish:
+        #
+        #   - UNKNOWN (argument exists but was not observed)
+        #   - ABSENT  (argument does not exist for this predicate instance)
+        #
+        # Therefore only ACTOR is observation-required here.
+        # OBJECT and TARGET are optional at the observation level even though
+        # both are semantically required for every real deploy event.
+        #
+        # TODO (Layer 3):
+        # Introduce a three-way role requirement:
+        #
+        #   OBSERVATION_REQUIRED  – must surface in the utterance
+        #   SEMANTIC_REQUIRED     – always exists; ellipsis → UNKNOWN slot
+        #   OPTIONAL              – may genuinely be absent
+        #
+        # L3 should represent the deploy frame above as a belief with an
+        # explicit UNKNOWN slot, not a missing role, so future observations
+        # ("Tao deploy web dashboard.") can fill it with provenance intact.
+        # -----------------------------------------------------------------------
+        required=frozenset({Role.ACTOR}),
+        optional=frozenset({Role.OBJECT, Role.TARGET})
+    ),
+    "use": RoleSchema(
+        required=frozenset({Role.ACTOR, Role.OBJECT}),
+        optional=frozenset({Role.TOOL})
+    ),
+    "study": RoleSchema(
+        required=frozenset({Role.ACTOR, Role.OBJECT})
+    ),
+    "play": RoleSchema(
+        required=frozenset({Role.ACTOR, Role.OBJECT})
+    ),
+    "like": RoleSchema(
+        required=frozenset({Role.ACTOR, Role.OBJECT}),
+        optional=frozenset({Role.TARGET})
+    ),
+    "hate": RoleSchema(
+        required=frozenset({Role.ACTOR, Role.OBJECT}),
+        optional=frozenset({Role.TARGET})
+    ),
+})
+
+@dataclass(frozen=True)
+class EntityMention:
+    """Type-safe EntityMention thay vì dict"""
+    mention_id: int
+    surface: str
+    entity_id: Optional[str] = None
+
+@dataclass(frozen=True)
+class ArgumentHypothesis:
+    """L2.2 chỉ sinh hypothesis. Không chấm điểm. L2.3 sẽ tạo score."""
+    entity_mention_id: int
+    entity_surface: str
+    entity_id: Optional[str]
+    role: Role
+
+@dataclass(frozen=True)
+class ArgumentHypothesisGraph:
+    """Immutable. L2.3 sẽ tạo ScoredArgumentGraph thay vì mutate graph này."""
+    observation_id: int
+    predicate_id: str
+    hypotheses: tuple[ArgumentHypothesis, ...] = field(default_factory=tuple)
+    
+    def get_by_role(self, role: Role) -> tuple[ArgumentHypothesis, ...]:
+        return tuple(h for h in self.hypotheses if h.role == role)
+    
+    def get_by_entity(self, entity_mention_id: int) -> tuple[ArgumentHypothesis, ...]:
+        return tuple(h for h in self.hypotheses if h.entity_mention_id == entity_mention_id)
+
+class ArgumentHypothesisGenerator:
+    """L2.2: Sinh hypothesis 100% deterministic. Cross-product của entities × schema roles."""
+    
+    def __init__(self):
+        self.version = "arg_hyp_v1.3_TYPED"
+        
+    def generate(self, observation_id: int, predicate_id: str, 
+                 entity_mentions: Sequence[EntityMention]) -> ArgumentHypothesisGraph:
+        # Contract: Fail fast nếu upstream vi phạm uniqueness invariant
+        mention_ids = [m.mention_id for m in entity_mentions]
+        if len(set(mention_ids)) != len(mention_ids):
+            raise ValueError(
+                f"L2.2 contract violated: duplicate entity_mention_id in input. "
+                f"Layer 1 violated uniqueness invariant."
+            )
+        
+        schema = SCHEMAS.get(predicate_id, RoleSchema())
+        roles = schema.all_roles()
+        
+        hyps = []
+        for mention in entity_mentions:
+            for role in roles:
+                hyps.append(ArgumentHypothesis(
+                    entity_mention_id=mention.mention_id,
+                    entity_surface=mention.surface,
+                    entity_id=mention.entity_id,
+                    role=role
+                ))
+                
+        return ArgumentHypothesisGraph(
+            observation_id=observation_id,
+            predicate_id=predicate_id,
+            hypotheses=tuple(hyps)
+        )
+
+_arg_hyp_generator = ArgumentHypothesisGenerator()
+
+# ╔═══════════════════════════════════════════════════════════════╗
+# ║  LAYER 2.3: ARGUMENT SCORING (Evidence + Aggregation)         ║
+# ╚═══════════════════════════════════════════════════════════════╝
+
+# FIX 1: Base class thay Union. Scale được khi thêm evidence types.
+@dataclass(frozen=True)
+class Evidence:
+    """Base class. Mọi evidence type inherit từ đây."""
+    pass
+
+@dataclass(frozen=True)
+class KeywordEvidence(Evidence):
+    """Vietnamese marker keyword found between predicate and entity."""
+    keyword: str
+
+@dataclass(frozen=True)
+class PositionEvidence(Evidence):
+    """Entity position relative to predicate."""
+    relation: str  # "before_predicate" or "after_predicate"
+
+@dataclass(frozen=True)
+class EntityTypeEvidence(Evidence):
+    """Inferred type of entity."""
+    entity_type: str
+
+@dataclass(frozen=True)
+class KeywordRelativePositionEvidence(Evidence):
+    """Entity position relative to a comparison keyword (e.g. 'hơn').
+    
+    Captures the structural observation that in "Flask hơn Django":
+    - Flask is BEFORE 'hơn'  → strong signal for OBJECT
+    - Django is AFTER 'hơn'  → strong signal for TARGET
+    
+    Encoded as value string f"{side}_{keyword}" for _RULE_INDEX lookup.
+    Example: "before_hơn", "after_hơn"
+    """
+    keyword: str
+    side: str  # "before" or "after"
+
+# FIX: EntityEvidenceCache - cache entity-level evidence, không tính N lần
+@dataclass(frozen=True)
+class EntityEvidence:
+    """Evidence cached per entity, không phụ thuộc role."""
+    entity_mention_id: int
+    position: Optional[PositionEvidence]
+    entity_type: EntityTypeEvidence
+    keywords: tuple[KeywordEvidence, ...]           # FIX: Keywords là property của entity
+    keyword_positions: tuple[KeywordRelativePositionEvidence, ...]  # NEW: relative position around comparison keywords
+
+EntityEvidenceCache = dict[int, EntityEvidence]
+
+# Phase 1: EvidenceGraph (immutable artifact riêng)
+
+@dataclass(frozen=True)
+class HypothesisEvidence:
+    """Evidence cho 1 hypothesis. Chỉ entity_evidence, không role_evidence."""
+    hypothesis: ArgumentHypothesis
+    entity_evidence: EntityEvidence
+
+@dataclass(frozen=True)
+class EvidenceGraph:
+    """FIX: Artifact bất biến riêng. Tách extraction khỏi aggregation."""
+    observation_id: int
+    predicate_id: str
+    hypothesis_evidence: tuple[HypothesisEvidence, ...]
+    
+    def get_by_hypothesis(self, entity_mention_id: int, role: Role) -> Optional[HypothesisEvidence]:
+        for he in self.hypothesis_evidence:
+            if he.hypothesis.entity_mention_id == entity_mention_id and he.hypothesis.role == role:
+                return he
+        return None
+
+# Phase 2: Scored Artifacts (immutable)
+
+@dataclass(frozen=True)
+class ScoredArgumentHypothesis:
+    """Hypothesis + score + evidence trail. Immutable."""
+    hypothesis: ArgumentHypothesis
+    score: float
+    evidence: tuple[Evidence, ...]
+
+@dataclass(frozen=True)
+class ScoredArgumentGraph:
+    """L2.3 output. Immutable. L2.4 sẽ đọc graph này."""
+    observation_id: int
+    predicate_id: str
+    scored_hypotheses: tuple[ScoredArgumentHypothesis, ...]
+    
+    def get_by_role(self, role: Role) -> tuple[ScoredArgumentHypothesis, ...]:
+        return tuple(sh for sh in self.scored_hypotheses if sh.hypothesis.role == role)
+
+# FIX 4: WeightRule type-safe thay tuple string
+@dataclass(frozen=True)
+class WeightRule:
+    evidence_class: type
+    value: str
+    role: Role
+    weight: float
+
+# Phase 1: Evidence Extractor (deterministic, NO role mapping)
+
+class EvidenceExtractor:
+    """FIX: Extractor chỉ quan sát. Keywords vào EntityEvidence."""
+    
+    KEYWORDS: frozenset[str] = frozenset({
+        "bằng", "lên", "cho", "tới", "đến", "từ", "ở", "với", "vào", "hơn"
+    })
+    
+    # Keywords that establish a relative order between two entities
+    # (entity BEFORE keyword = one role; entity AFTER keyword = another role)
+    COMPARISON_KEYWORDS: frozenset[str] = frozenset({"hơn"})
+    
+    TYPE_KEYWORDS: dict[str, frozenset[str]] = {
+        "person": frozenset({"tao", "mày", "tôi", "mình", "tuệ mẫn", "tue_man", "user", "anh", "em", "tôi"}),
+        "programming_language": frozenset({"python", "java", "javascript", "flask", "django", "sqlite", "postgresql", "redis", "docker", "react", "typescript", "golang", "elixir", "celery", "fastapi", "pydantic", "node", "vue", "svelte", "graphql", "pytorch", "onnx", "kafka", "spark", "mongodb", "mysql", "elasticsearch", "solr", "webpack", "babel", "vim", "neovim", "kubernetes", "jenkins", "prometheus", "grafana", "terraform", "aws", "nginx", "gunicorn", "arch linux", "fedora", "git", "git lfs", "github actions", "gitlab ci"}),
+        "problem": frozenset({"bug", "lỗi", "error", "issue", "fail", "crash", "problem", "production mindset"}),
+        "system": frozenset({"production", "server", "system", "database", "cluster", "pipeline", "code", "project", "daemon", "container"}),
+    }
+    
+    def extract_entity_evidence(self, text: str, predicate_start: int, predicate_end: int,
+                                entity_surface: str, entity_start: int, entity_end: int,
+                                entity_mention_id: int) -> EntityEvidence:
+        """FIX: Cache tất cả entity evidence 1 lần: position + type + keywords."""
+        text_lower = text.lower()
+        
+        # Position
+        position = None
+        if entity_end <= predicate_start:
+            position = PositionEvidence(relation="before_predicate")
+        elif entity_start >= predicate_end:
+            position = PositionEvidence(relation="after_predicate")
+        
+        # Entity type
+        entity_type = self._detect_type(entity_surface)
+        
+        # FIX: Keywords extract 1 lần per entity, vào EntityEvidence
+        keywords: list[KeywordEvidence] = []
+        for keyword in self.KEYWORDS:
+            kw_pos = text_lower.find(keyword)
+            while kw_pos >= 0:
+                if (kw_pos >= predicate_end 
+                    and entity_start > kw_pos 
+                    and entity_start - kw_pos - len(keyword) < 15):
+                    keywords.append(KeywordEvidence(keyword=keyword))
+                kw_pos = text_lower.find(keyword, kw_pos + 1)
+        
+        # NEW: Relative position around comparison keywords (e.g. "hơn")
+        # Observation: "Flask hơn Django" → Flask=before, Django=after
+        # This evidence is independent of role; scorer decides what it means.
+        kw_positions: list[KeywordRelativePositionEvidence] = []
+        for ckw in self.COMPARISON_KEYWORDS:
+            ckw_pos = text_lower.find(ckw)
+            while ckw_pos >= 0:
+                if ckw_pos >= predicate_end:  # keyword is after predicate
+                    if entity_end <= ckw_pos:
+                        # entity ends before keyword starts → entity is BEFORE keyword
+                        kw_positions.append(KeywordRelativePositionEvidence(keyword=ckw, side="before"))
+                    elif entity_start >= ckw_pos + len(ckw):
+                        # entity starts after keyword ends → entity is AFTER keyword
+                        kw_positions.append(KeywordRelativePositionEvidence(keyword=ckw, side="after"))
+                ckw_pos = text_lower.find(ckw, ckw_pos + 1)
+        
+        return EntityEvidence(
+            entity_mention_id=entity_mention_id,
+            position=position,
+            entity_type=EntityTypeEvidence(entity_type=entity_type),
+            keywords=tuple(keywords),
+            keyword_positions=tuple(kw_positions)
+        )
+    
+    def _detect_type(self, surface: str) -> str:
+        surface_lower = surface.lower()
+        for type_name, keywords in self.TYPE_KEYWORDS.items():
+            if any(kw in surface_lower for kw in keywords):
+                return type_name
+        return "unknown"
+
+# EvidenceGraph Builder
+
+class EvidenceGraphBuilder:
+    """FIX: Build EvidenceGraph. Mọi evidence nằm trong EntityEvidence."""
+    
+    def __init__(self):
+        self.extractor = EvidenceExtractor()
+        self.version = "ev_graph_v1.1"
+    
+    def build(self, graph: ArgumentHypothesisGraph, text: str,
+             predicate_start: int, predicate_end: int,
+             entity_spans: dict[int, tuple[int, int]]) -> EvidenceGraph:
+        """Build EvidenceGraph. EntityEvidence cache chạy đúng 1 lần per entity."""
+        
+        entity_cache: EntityEvidenceCache = {}
+        for hyp in graph.hypotheses:
+            if hyp.entity_mention_id not in entity_cache:
+                entity_start, entity_end = entity_spans.get(hyp.entity_mention_id, (0, 0))
+                entity_cache[hyp.entity_mention_id] = self.extractor.extract_entity_evidence(
+                    text=text,
+                    predicate_start=predicate_start,
+                    predicate_end=predicate_end,
+                    entity_surface=hyp.entity_surface,
+                    entity_start=entity_start,
+                    entity_end=entity_end,
+                    entity_mention_id=hyp.entity_mention_id
+                )
+        
+        # Mọi hypothesis share cùng EntityEvidence cho cùng entity
+        hyp_evidence: list[HypothesisEvidence] = []
+        for hyp in graph.hypotheses:
+            ent_ev = entity_cache[hyp.entity_mention_id]
+            hyp_evidence.append(HypothesisEvidence(
+                hypothesis=hyp,
+                entity_evidence=ent_ev
+            ))
+        
+        return EvidenceGraph(
+            observation_id=graph.observation_id,
+            predicate_id=graph.predicate_id,
+            hypothesis_evidence=tuple(hyp_evidence)
+        )
+
+# Phase 2: Evidence Aggregator (evidence → score, type-safe)
+
+class EvidenceAggregator:
+    """FIX: Đọc entity_evidence (position + type + keywords). Không còn role_evidence."""
+    
+    BASE_SCORE = 0.10
+    
+    RULES: tuple[WeightRule, ...] = (
+        # Keyword evidence
+        WeightRule(KeywordEvidence, "bằng", Role.TOOL, 0.55),
+        WeightRule(KeywordEvidence, "lên", Role.TARGET, 0.50),
+        WeightRule(KeywordEvidence, "lên", Role.DESTINATION, 0.40),
+        WeightRule(KeywordEvidence, "cho", Role.BENEFICIARY, 0.45),
+        WeightRule(KeywordEvidence, "tới", Role.DESTINATION, 0.45),
+        WeightRule(KeywordEvidence, "đến", Role.DESTINATION, 0.45),
+        WeightRule(KeywordEvidence, "từ", Role.SOURCE, 0.45),
+        WeightRule(KeywordEvidence, "ở", Role.LOCATION, 0.40),
+        WeightRule(KeywordEvidence, "với", Role.TOOL, 0.35),
+        WeightRule(KeywordEvidence, "vào", Role.DESTINATION, 0.40),
+        WeightRule(KeywordEvidence, "hơn", Role.TARGET, 0.40),
+        
+        # Keyword relative position evidence
+        # Entity BEFORE "hơn": strong signal for OBJECT ("Tao thích [Flask] hơn Django")
+        # Entity AFTER  "hơn": strong signal for TARGET ("Tao thích Flask hơn [Django]")
+        # value = f"{side}_{keyword}" to match _RULE_INDEX lookup
+        WeightRule(KeywordRelativePositionEvidence, "before_hơn", Role.OBJECT, 0.30),
+        WeightRule(KeywordRelativePositionEvidence, "after_hơn",  Role.TARGET, 0.25),
+        
+        # Position evidence
+        WeightRule(PositionEvidence, "before_predicate", Role.ACTOR, 0.35),
+        WeightRule(PositionEvidence, "after_predicate", Role.OBJECT, 0.15),
+        WeightRule(PositionEvidence, "after_predicate", Role.TOOL, 0.10),
+        WeightRule(PositionEvidence, "after_predicate", Role.TARGET, 0.10),
+        WeightRule(PositionEvidence, "after_predicate", Role.DESTINATION, 0.10),
+        
+        # Entity type evidence (positive)
+        WeightRule(EntityTypeEvidence, "person", Role.ACTOR, 0.30),
+        WeightRule(EntityTypeEvidence, "programming_language", Role.TOOL, 0.25),
+        WeightRule(EntityTypeEvidence, "problem", Role.OBJECT, 0.20),
+        WeightRule(EntityTypeEvidence, "system", Role.OBJECT, 0.15),
+        WeightRule(EntityTypeEvidence, "system", Role.TARGET, 0.15),
+        
+        # Entity type evidence (negative)
+        WeightRule(EntityTypeEvidence, "person", Role.TOOL, -0.20),
+        WeightRule(EntityTypeEvidence, "person", Role.OBJECT, -0.10),
+        WeightRule(EntityTypeEvidence, "programming_language", Role.ACTOR, -0.20),
+        WeightRule(EntityTypeEvidence, "problem", Role.ACTOR, -0.20),
+        WeightRule(EntityTypeEvidence, "problem", Role.TOOL, -0.15),
+    )
+    
+    _RULE_INDEX: dict[tuple[type, str, str], float] = {
+        (r.evidence_class, r.value, r.role.value): r.weight
+        for r in RULES
+    }
+    
+    # FIX: Startup invariant - fail fast nếu duplicate rule
+    # FIX: Dùng Role thay vì role.value
+    _RULE_INDEX: dict[tuple[type, str, Role], float] = {
+        (r.evidence_class, r.value, r.role): r.weight
+        for r in RULES
+    }
+    
+    # Startup invariant
+    if len(_RULE_INDEX) != len(RULES):
+        raise ValueError(
+            f"EvidenceAggregator: Duplicate WeightRule detected. "
+            f"RULES={len(RULES)} but _RULE_INDEX={len(_RULE_INDEX)}. "
+            f"Check for duplicate (evidence_class, value, role) tuples."
+        )
+    
+    def aggregate(self, hyp_ev: HypothesisEvidence) -> tuple[float, tuple[Evidence, ...]]:
+        """FIX: _RULE_INDEX dùng Role enum thay vì string."""
+        score = self.BASE_SCORE
+        all_evidence: list[Evidence] = []
+        ent_ev = hyp_ev.entity_evidence
+        role = hyp_ev.hypothesis.role  # Role enum, không .value
+        
+        # Position
+        if ent_ev.position:
+            all_evidence.append(ent_ev.position)
+            key = (PositionEvidence, ent_ev.position.relation, role)
+            score += self._RULE_INDEX.get(key, 0.0)
+        
+        # Entity type
+        if ent_ev.entity_type:
+            all_evidence.append(ent_ev.entity_type)
+            key = (EntityTypeEvidence, ent_ev.entity_type.entity_type, role)
+            score += self._RULE_INDEX.get(key, 0.0)
+        
+        # Keywords
+        for kw_ev in ent_ev.keywords:
+            all_evidence.append(kw_ev)
+            key = (KeywordEvidence, kw_ev.keyword, role)
+            score += self._RULE_INDEX.get(key, 0.0)
+        
+        # Keyword relative positions (NEW)
+        for krp_ev in ent_ev.keyword_positions:
+            all_evidence.append(krp_ev)
+            value = f"{krp_ev.side}_{krp_ev.keyword}"
+            key = (KeywordRelativePositionEvidence, value, role)
+            score += self._RULE_INDEX.get(key, 0.0)
+        
+        return max(0.0, min(1.0, score)), tuple(all_evidence)
+           
+    @staticmethod
+    def _get_ev_value(ev: Evidence) -> str:
+        if isinstance(ev, KeywordEvidence):
+            return ev.keyword
+        elif isinstance(ev, PositionEvidence):
+            return ev.relation
+        elif isinstance(ev, EntityTypeEvidence):
+            return ev.entity_type
+        elif isinstance(ev, KeywordRelativePositionEvidence):
+            return f"{ev.side}_{ev.keyword}"
+        return ""
+
+# L2.3 Pipeline: EvidenceGraph → ScoredArgumentGraph
+
+class ArgumentScorer:
+    """L2.3: Score each hypothesis. Reads EvidenceGraph, outputs ScoredArgumentGraph."""
+    
+    def __init__(self):
+        self.aggregator = EvidenceAggregator()
+        self.version = "arg_score_v1.1_EVIDENCE_GRAPH"
+    
+    def score(self, evidence_graph: EvidenceGraph) -> ScoredArgumentGraph:
+        """Read EvidenceGraph → output ScoredArgumentGraph. Immutable."""
+        scored: list[ScoredArgumentHypothesis] = []
+        
+        for hyp_ev in evidence_graph.hypothesis_evidence:
+            score, evidence_trail = self.aggregator.aggregate(hyp_ev)
+            scored.append(ScoredArgumentHypothesis(
+                hypothesis=hyp_ev.hypothesis,
+                score=score,
+                evidence=evidence_trail
+            ))
+        
+        return ScoredArgumentGraph(
+            observation_id=evidence_graph.observation_id,
+            predicate_id=evidence_graph.predicate_id,
+            scored_hypotheses=tuple(scored)
+        )
+
+_evidence_graph_builder = EvidenceGraphBuilder()
+_argument_scorer = ArgumentScorer()
+
+# ╔═══════════════════════════════════════════════════════════════╗
+# ║  LAYER 2.4: SYMBOLIC REASONING ENGINE (v6 - LOCKED)           ║
+# ║  "Artifact không chỉ là kết quả. Nó là dấu vết suy luận."     ║
+# ╚═══════════════════════════════════════════════════════════════╝
+
+class ConstraintTier(Enum):
+    HARD = 1
+    LINGUISTIC = 2
+    SEMANTIC = 3
+    PREFERENCE = 4
+
+# --- Constraint Hierarchy (Unary, Binary, Global) ---
+
+class BaseConstraint(ABC):
+    name: str = "BaseConstraint"
+    tier: ConstraintTier = ConstraintTier.HARD
+    @abstractmethod
+    def evaluate(self, bindings: tuple['Binding', ...]) -> 'ConstraintTrace': pass
+
+class UnaryConstraint(BaseConstraint):
+    @abstractmethod
+    def get_role(self) -> Role: pass
+    @abstractmethod
+    def is_satisfied(self, val: EntityMention) -> bool: pass
+
+class BinaryConstraint(BaseConstraint):
+    @abstractmethod
+    def get_roles(self) -> tuple[Role, Role]: pass
+    @abstractmethod
+    def is_satisfied(self, val_a: EntityMention, val_b: EntityMention) -> bool: pass
+
+class GlobalConstraint(BaseConstraint):
+    """Constraints đánh giá toàn bộ configuration (vd: SchemaCoverage)"""
+    pass
+
+@dataclass(frozen=True)
+class ConstraintTrace:
+    constraint_name: str
+    tier: ConstraintTier
+    passed: bool
+    delta: float
+    reason: str
+
+@dataclass(frozen=True)
+class Require(BaseConstraint):
+    role: Role
+    name: str = "Require"
+    tier: ConstraintTier = ConstraintTier.HARD
+    def evaluate(self, bindings: tuple['Binding', ...]) -> ConstraintTrace:
+        if any(b.role == self.role for b in bindings):
+            return ConstraintTrace(self.name, self.tier, True, 0.1, f"{self.role.value} assigned")
+        return ConstraintTrace(self.name, self.tier, False, -1.0, f"{self.role.value} missing")
+
+@dataclass(frozen=True)
+class Distinct(BinaryConstraint):
+    role_a: Role
+    role_b: Role
+    name: str = "Distinct"
+    tier: ConstraintTier = ConstraintTier.HARD
+    def get_roles(self) -> tuple[Role, Role]: return (self.role_a, self.role_b)
+    def is_satisfied(self, val_a: EntityMention, val_b: EntityMention) -> bool: 
+        return val_a.mention_id != val_b.mention_id
+    def evaluate(self, bindings: tuple['Binding', ...]) -> ConstraintTrace:
+        b_a = next((b for b in bindings if b.role == self.role_a), None)
+        b_b = next((b for b in bindings if b.role == self.role_b), None)
+        if b_a and b_b and b_a.entity.mention_id == b_b.entity.mention_id:
+            return ConstraintTrace(self.name, self.tier, False, -1.0, f"{self.role_a.value} == {self.role_b.value}")
+        return ConstraintTrace(self.name, self.tier, True, 0.0, f"{self.role_a.value} != {self.role_b.value}")
+
+@dataclass(frozen=True)
+class SchemaCoverage(GlobalConstraint):
+    required_roles: tuple[Role, ...]
+    name: str = "SchemaCoverage"
+    tier: ConstraintTier = ConstraintTier.PREFERENCE
+    def evaluate(self, bindings: tuple['Binding', ...]) -> ConstraintTrace:
+        assigned = {b.role for b in bindings}
+        missing = [r.value for r in self.required_roles if r not in assigned]
+        if not missing:
+            return ConstraintTrace(self.name, self.tier, True, 0.05, "Schema fully covered")
+        return ConstraintTrace(self.name, self.tier, False, -0.05, f"Missing: {missing}")
+
+@dataclass(frozen=True)
+class ConstraintSet:
+    constraints: tuple[BaseConstraint, ...]
+    @staticmethod
+    def from_schema(schema: RoleSchema) -> 'ConstraintSet':
+        cs: list[BaseConstraint] = []
+        for r in schema.required: cs.append(Require(r))
+        if Role.ACTOR in schema.all_roles() and Role.OBJECT in schema.all_roles():
+            cs.append(Distinct(Role.ACTOR, Role.OBJECT))
+        cs.append(SchemaCoverage(required_roles=tuple(schema.required)))
+        return ConstraintSet(constraints=tuple(cs))
+
+# --- Domain & AC-3 ---
+
+@dataclass(frozen=True)
+class DomainValue:
+    entity: EntityMention
+    local_score: float
+    evidence: tuple[Evidence, ...]
+
+@dataclass(frozen=True)
+class DomainGraph:
+    domains: dict[Role, tuple[DomainValue, ...]]
+
+class CSPPreprocessor:
+    @staticmethod
+    def build_domains(scored_graph: ScoredArgumentGraph, schema: RoleSchema, top_k_per_role: int = 5) -> DomainGraph:
+        domains: dict[Role, list[DomainValue]] = {r: [] for r in schema.all_roles()}
+        ent_map: dict[int, EntityMention] = {}
+        for sh in scored_graph.scored_hypotheses:
+            if sh.hypothesis.entity_mention_id not in ent_map:
+                ent_map[sh.hypothesis.entity_mention_id] = EntityMention(
+                    mention_id=sh.hypothesis.entity_mention_id,
+                    surface=sh.hypothesis.entity_surface,
+                    entity_id=sh.hypothesis.entity_id
+                )
+            domains[sh.hypothesis.role].append(DomainValue(
+                entity=ent_map[sh.hypothesis.entity_mention_id],
+                local_score=sh.score,
+                evidence=sh.evidence
+            ))
+        pruned = {}
+        for r, vals in domains.items():
+            sorted_vals = sorted(vals, key=lambda x: x.local_score, reverse=True)
+            pruned[r] = tuple(sorted_vals[:top_k_per_role])
+        return DomainGraph(domains=pruned)
+
+    @staticmethod
+    def ac3(domains: DomainGraph, constraint_set: ConstraintSet) -> DomainGraph:
+        mutable_domains: dict[Role, list[DomainValue]] = {r: list(v) for r, v in domains.domains.items()}
+        queue: deque[tuple[Role, Role, BinaryConstraint]] = deque()
+        
+        for c in constraint_set.constraints:
+            if isinstance(c, BinaryConstraint):
+                r_a, r_b = c.get_roles()
+                queue.append((r_a, r_b, c))
+                queue.append((r_b, r_a, c))
+                
+        while queue:
+            role_x, role_y, const = queue.popleft()
+            removed = False
+            to_remove = []
+            for val_x in mutable_domains.get(role_x, []):
+                satisfiable = any(const.is_satisfied(val_x.entity, val_y.entity) for val_y in mutable_domains.get(role_y, []))
+                if not satisfiable:
+                    to_remove.append(val_x)
+                    removed = True
+            if removed:
+                for dv in to_remove: mutable_domains[role_x].remove(dv)
+                if not mutable_domains[role_x]:
+                    return DomainGraph(domains={})
+                for c in constraint_set.constraints:
+                    if isinstance(c, BinaryConstraint):
+                        r_a, r_b = c.get_roles()
+                        if r_a == role_x and r_b != role_y: queue.append((r_b, r_a, c))
+                        elif r_b == role_x and r_a != role_y: queue.append((r_a, r_b, c))
+        return DomainGraph(domains={r: tuple(v) for r, v in mutable_domains.items()})
+
+# --- Core Reasoning Artifacts ---
+
+@dataclass(frozen=True)
+class Binding:
+    role: Role
+    entity: EntityMention
+    score: float
+    evidence: tuple[Evidence, ...]
+
+@dataclass(frozen=True)
+class ConstraintEvaluationLog:
+    traces: tuple[ConstraintTrace, ...]
+
+@dataclass(frozen=True)
+class SolutionTrace:
+    bindings: tuple[Binding, ...]
+    raw_assignment_score: float
+    constraint_delta: float
+    final_rank_score: float
+    evaluation_log: ConstraintEvaluationLog
+
+@dataclass(frozen=True)
+class SearchResult:
+    solutions: tuple[tuple[tuple[Binding, ...], float, ConstraintEvaluationLog], ...]
+    nodes_visited: int
+    branches_pruned: int
+
+# --- Execution Stats & Provenance ---
+
+@dataclass(frozen=True)
+class PipelineStep:
+    name: str
+    version: str
+
+@dataclass(frozen=True)
+class Provenance:
+    observation_id: int
+    pipeline: tuple[PipelineStep, ...]
+    timestamp: float
+
+@dataclass(frozen=True)
+class ExecutionStats:
+    nodes_visited: int
+    branches_pruned: int
+    runtime_ms: int
+
+# --- Cognitive Distribution ---
+
+@dataclass(frozen=True)
+class HypothesisProbability:
+    solution: SolutionTrace
+    probability: float
+
+@dataclass(frozen=True)
+class HypothesisDistribution:
+    """L3 không đọc winner. L3 đọc distribution này."""
+    probabilities: tuple[HypothesisProbability, ...]
+    entropy: float
+
+# --- Search Strategy ---
+
+class SearchStrategy(ABC):
+    @abstractmethod
+    def search(self, domains: DomainGraph, constraint_set: ConstraintSet, top_k: int) -> SearchResult: pass
+
+class ExactDFSStrategy(SearchStrategy):
+    def search(self, domains: DomainGraph, constraint_set: ConstraintSet, top_k: int) -> SearchResult:
+        valid_configs: list[tuple[tuple[Binding, ...], float, ConstraintEvaluationLog]] = []
+        nodes_visited = 0
+        branches_pruned = 0
+        
+        # Pre-compute required roles once from Require constraints.
+        # Avoids re-scanning constraint_set on every DFS node.
+        schema_required = frozenset(c.role for c in constraint_set.constraints if isinstance(c, Require))
+
+        def dfs(current_binds: list[Binding], unassigned_roles: list[Role]):
+            nonlocal nodes_visited, branches_pruned
+            nodes_visited += 1
+            
+            if not unassigned_roles:
+                binds_tuple = tuple(current_binds)
+                is_valid = True
+                raw_score = sum(b.score for b in current_binds)
+                delta = 0.0
+                traces: list[ConstraintTrace] = []
+                for c in constraint_set.constraints:
+                    trace = c.evaluate(binds_tuple)
+                    traces.append(trace)
+                    if not trace.passed and c.tier == ConstraintTier.HARD: is_valid = False
+                    delta += trace.delta
+                if is_valid:
+                    valid_configs.append((binds_tuple, raw_score, ConstraintEvaluationLog(traces=tuple(traces))))
+                else:
+                    branches_pruned += 1
+                return
+
+            # Required-first + MRV ordering.
+            # Required roles are scheduled before optional ones (False < True).
+            # Among same priority tier, MRV picks the role with fewest candidates.
+            next_role = min(
+                unassigned_roles,
+                key=lambda r: (r not in schema_required, len(domains.domains.get(r, [])))
+            )
+            remaining_roles = [r for r in unassigned_roles if r != next_role]
+            
+            domain_vals = domains.domains.get(next_role, [])
+            assigned_ids = {b.entity.mention_id for b in current_binds}
+            is_required = next_role in schema_required
+
+            if not domain_vals:
+                # Empty domain: skip if optional (valid configs still possible),
+                # dead-end if required (no entity available to fill a mandatory role).
+                if not is_required:
+                    dfs(current_binds, remaining_roles)
+                else:
+                    branches_pruned += 1
+                return
+
+            # Optional skip branch: must be an independent DFS branch, not a fallback.
+            # Exploring it unconditionally guarantees complete search — valid configs
+            # that omit this role are found regardless of entity ordering or
+            # domain availability. This is the fix for the order-dependent bug.
+            if not is_required:
+                dfs(current_binds, remaining_roles)
+
+            # Assignment branches
+            for dv in domain_vals:
+                if dv.entity.mention_id in assigned_ids:
+                    branches_pruned += 1
+                    continue
+                
+                # In-DFS Forward Checking
+                is_valid_partial = True
+                for c in constraint_set.constraints:
+                    if isinstance(c, BinaryConstraint):
+                        r_a, r_b = c.get_roles()
+                        if next_role == r_a: other_role = r_b
+                        elif next_role == r_b: other_role = r_a
+                        else: continue
+                        other_bind = next((b for b in current_binds if b.role == other_role), None)
+                        if other_bind and not c.is_satisfied(dv.entity, other_bind.entity):
+                            is_valid_partial = False
+                            branches_pruned += 1
+                            break
+                            
+                if is_valid_partial:
+                    new_bind = Binding(role=next_role, entity=dv.entity, score=dv.local_score, evidence=dv.evidence)
+                    dfs(current_binds + [new_bind], remaining_roles)
+
+        dfs([], list(domains.domains.keys()))
+        valid_configs.sort(key=lambda x: x[1] + sum(t.delta for t in x[2].traces), reverse=True)
+        
+        top_k_configs = valid_configs[:top_k]
+        return SearchResult(solutions=tuple(top_k_configs), nodes_visited=nodes_visited, branches_pruned=branches_pruned)
+
+# --- Explanation Engine (Decoupled from Search) ---
+
+@dataclass(frozen=True)
+class RejectedCandidate:
+    entity: EntityMention
+    reason: str
+    constraint_name: str
+
+@dataclass(frozen=True)
+class AssignmentDecision:
+    role: Role
+    chosen: EntityMention
+    rejected: tuple[RejectedCandidate, ...]
+
+class ExplanationGenerator:
+    """Lazy evaluation. Reflection hỏi mới trả lời."""
+    @staticmethod
+    def explain(winner: SolutionTrace, domains: DomainGraph, constraint_set: ConstraintSet) -> tuple[AssignmentDecision, ...]:
+        decisions: list[AssignmentDecision] = []
+        for b in winner.bindings:
+            rejected: list[RejectedCandidate] = []
+            for dv in domains.domains.get(b.role, []):
+                if dv.entity.mention_id == b.entity.mention_id: continue
+                temp_binds = tuple([x if x.role != b.role else Binding(b.role, dv.entity, dv.local_score, dv.evidence) for x in winner.bindings])
+                reason = "Not chosen"
+                c_name = "None"
+                for c in constraint_set.constraints:
+                    res = c.evaluate(temp_binds)
+                    if not res.passed:
+                        reason = res.reason
+                        c_name = res.constraint_name
+                        break
+                rejected.append(RejectedCandidate(dv.entity, reason, c_name))
+            decisions.append(AssignmentDecision(b.role, b.entity, tuple(rejected)))
+        return tuple(decisions)
+
+# --- L2.4 Engine & Artifacts ---
+
+class DistributionPolicy(ABC):
+    @abstractmethod
+    def build(self, solutions: list[SolutionTrace]) -> HypothesisDistribution: pass
+
+class SoftmaxPolicy(DistributionPolicy):
+    def build(self, solutions: list[SolutionTrace]) -> HypothesisDistribution:
+        if not solutions: return HypothesisDistribution(probabilities=tuple(), entropy=0.0)
+        scores = [s.final_rank_score for s in solutions]
+        max_score = max(scores)
+        exp_scores = [math.exp(s - max_score) for s in scores]
+        sum_exp = sum(exp_scores)
+        probs = [e / sum_exp for e in exp_scores]
+        probabilities = tuple(HypothesisProbability(sol, p) for sol, p in zip(solutions, probs))
+        entropy = -sum(p * math.log2(p) for p, _ in zip(probs, solutions) if p > 0)
+        return HypothesisDistribution(probabilities=probabilities, entropy=entropy)
+
+@dataclass(frozen=True)
+class ReasoningSession:
+    """The ultimate immutable artifact of L2.4."""
+    provenance: Provenance
+    predicate_id: str
+    domain_graph: DomainGraph
+    distribution: HypothesisDistribution
+    execution_stats: ExecutionStats
+
+class ArgumentResolver:
+    def __init__(self, strategy: SearchStrategy = ExactDFSStrategy(), dist_policy: DistributionPolicy = SoftmaxPolicy()):
+        self.version = "arg_resolver_v6.1_FROZEN"
+        self.strategy = strategy
+        self.dist_policy = dist_policy
+        self.top_k = 3
+
+    def resolve(self, scored_graph: ScoredArgumentGraph, schema: RoleSchema, 
+                provenance: Provenance, runtime_ms: int) -> Optional[ReasoningSession]:
+        print(schema.required)
+        print(schema.optional)
+        print(schema.all_roles())
+        constraint_set = ConstraintSet.from_schema(schema)
+        initial_domains = CSPPreprocessor.build_domains(scored_graph, schema)
+        pruned_domains = CSPPreprocessor.ac3(initial_domains, constraint_set)
+        if not pruned_domains.domains: return None
+        
+        search_res = self.strategy.search(pruned_domains, constraint_set, self.top_k)
+        if not search_res.solutions: return None
+        
+        solutions_with_scores: list[SolutionTrace] = []
+        for binds, raw_score, log in search_res.solutions:
+            delta = sum(t.delta for t in log.traces)
+            solutions_with_scores.append(SolutionTrace(
+                bindings=binds,
+                raw_assignment_score=raw_score,
+                constraint_delta=delta,
+                final_rank_score=raw_score + delta,
+                evaluation_log=log
+            ))
+            
+        distribution = self.dist_policy.build(solutions_with_scores[:self.top_k])
+        exec_stats = ExecutionStats(
+            nodes_visited=search_res.nodes_visited,
+            branches_pruned=search_res.branches_pruned,
+            runtime_ms=runtime_ms
+        )
+            
+        return ReasoningSession(
+            provenance=provenance,
+            predicate_id=scored_graph.predicate_id,
+            domain_graph=pruned_domains,
+            distribution=distribution,
+            execution_stats=exec_stats
+        )
+
+_argument_resolver = ArgumentResolver()
+
+def run_resolver(scored_graph: ScoredArgumentGraph, schema: RoleSchema, observation_id: int) -> Optional[ReasoningSession]:
+    """Helper wrapper để giữ core engine thuần khiết, không depend time."""
+    t_start = time.perf_counter()
+    prov = Provenance(
+        observation_id=observation_id,
+        pipeline=(
+            PipelineStep("PredicateExtractor", _predicate_extractor.version),
+            PipelineStep("EvidenceGraphBuilder", _evidence_graph_builder.version),
+            PipelineStep("ArgumentScorer", _argument_scorer.version),
+            PipelineStep("ArgumentResolver", _argument_resolver.version)
+        ),
+        timestamp=time.time()
+    )
+    return _argument_resolver.resolve(
+        scored_graph, schema, prov, runtime_ms=int((time.perf_counter() - t_start) * 1000)
+    )
+
+# ╔═══════════════════════════════════════════════════════════════╗
+# ║  LAYER 2.4 BENCHMARK HELPER                                    ║
+# ╚═══════════════════════════════════════════════════════════════╝
+
+def _build_scored_graph_for_test(text: str, predicate_surface: str, entity_surfaces: list[str], idx: int) -> Optional[ScoredArgumentGraph]:
+    """Reuse logic từ L2.3 benchmark để create graph."""
+    pred_start, pred_end = _find_surface_pos(text, predicate_surface)
+    if pred_start < 0: return None
+    entity_spans: dict[int, tuple[int, int]] = {}
+    search_from = 0
+    for j, surface in enumerate(entity_surfaces):
+        start, end = _find_surface_pos(text, surface, search_from)
+        if start < 0:
+            start, end = _find_surface_pos(text, surface, 0)
+        entity_spans[j] = (start, end)
+        search_from = end
+    entity_mentions = [
+        EntityMention(mention_id=j, surface=surface, entity_id=surface.lower())
+        for j, surface in enumerate(entity_surfaces)
+    ]
+    pred_surface_lower = predicate_surface.lower()
+    pred_id = pred_surface_lower
+    for alias, p_ids in _predicate_lexicon._alias_dict.items():
+        if pred_surface_lower == alias and p_ids:
+            pred_id = p_ids[0]
+            break
+    hyp_graph = _arg_hyp_generator.generate(observation_id=idx, predicate_id=pred_id, entity_mentions=entity_mentions)
+    evidence_graph = _evidence_graph_builder.build(graph=hyp_graph, text=text, predicate_start=pred_start, predicate_end=pred_end, entity_spans=entity_spans)
+    return _argument_scorer.score(evidence_graph)
+
+def run_benchmark_resolution():
+    """L2.4 Benchmark: Test CSP Global Optimization và Hypothesis Distribution."""
+    print("═" * 54)
+    print(f"  ARGUMENT RESOLUTION BENCHMARK (Level 2.4)")
+    print("═" * 54)
+    print(f"  Phase: CSP Optimization & Distribution")
+    print("─" * 54)
+
+    for i, item in enumerate(GOLD_SCORING_TEST):
+        text = item["text"]
+        predicate_surface = item["predicate_surface"]
+        entity_surfaces = item["entity_surfaces"]
+        expected_ranking = item["expected_ranking"]
+
+        scored_graph = _build_scored_graph_for_test(text, predicate_surface, entity_surfaces, i)
+        if not scored_graph:
+            print(f"  [{i}] Failed to build scored graph.")
+            continue
+
+        schema = SCHEMAS.get(scored_graph.predicate_id, RoleSchema())
+        if not schema.required:
+            print(f"  [{i}] No schema for {scored_graph.predicate_id}, skipping.")
+            continue
+
+        session = run_resolver(scored_graph, schema, observation_id=i)
+        if not session:
+            print(f"  [{i}] Failed to resolve frame.")
+            continue
+
+        # Get winner (highest probability in distribution)
+        winner = session.distribution.probabilities[0].solution
+        is_correct = True
+        for role_str, correct_entity_idx in expected_ranking.items():
+            role = Role(role_str)
+            # Tìm binding có role tương ứng
+            bind = next((b for b in winner.bindings if b.role == role), None)
+            if not bind or bind.entity.mention_id != correct_entity_idx:
+                is_correct = False
+                break
+
+        status = "✓ PASS" if is_correct else "✗ FAIL"
+        print(f"  [{i}] {status} | Text: \"{text[:40]}...\"")
+        print(f"      -> Entropy: {session.distribution.entropy:.3f} | Runtime: {session.execution_stats.runtime_ms}ms | Nodes: {session.execution_stats.nodes_visited}")
+        
+        if not is_correct:
+            print(f"      Expected: {expected_ranking}")
+            print(f"      Bindings: {[(b.role.value, b.entity.surface) for b in winner.bindings]}")
+
+    print("─" * 54)
+    print(f"  NOTE: L2.4 đánh giá toàn bộ configuration, không lấy max local.")
+    print("═" * 54)
+    
+# Benchmark: Pairwise Ranking + Completeness Invariant
+
+GOLD_SCORING_TEST = [
+    {
+        "text": "Tao sửa bug bằng Python",
+        "predicate_surface": "sửa",
+        "entity_surfaces": ["Tao", "bug", "Python"],
+        "expected_ranking": {
+            "actor": 0,
+            "object": 1,
+            "tool": 2,
+        }
+    },
+    {
+        "text": "Tuệ Mẫn dùng SQLite",
+        "predicate_surface": "dùng",
+        "entity_surfaces": ["Tuệ Mẫn", "SQLite"],
+        "expected_ranking": {
+            "actor": 0,
+            "object": 1,
+        }
+    },
+    {
+        "text": "Tao deploy lên production",
+        "predicate_surface": "deploy",
+        "entity_surfaces": ["Tao", "production"],
+        "expected_ranking": {
+            "actor": 0,
+            "target": 1,
+        }
+    },
+    {
+        "text": "Tao thích Flask hơn Django",
+        "predicate_surface": "thích",
+        "entity_surfaces": ["Tao", "Flask", "Django"],
+        "expected_ranking": {
+            "actor": 0,
+            "object": 1,
+            "target": 2,
+        }
+    },
+    {
+        "text": "Tao ghét production mindset",
+        "predicate_surface": "ghét",
+        "entity_surfaces": ["Tao", "production mindset"],
+        "expected_ranking": {
+            "actor": 0,
+            "object": 1,
+        }
+    },
+]
+
+def _find_surface_pos(text: str, surface: str, start_from: int = 0) -> tuple[int, int]:
+    pos = text.lower().find(surface.lower(), start_from)
+    if pos < 0:
+        return (-1, -1)
+    return (pos, pos + len(surface))
+
+def run_benchmark_scoring():
+    """L2.3 Benchmark: Pairwise Ranking + Completeness Invariant."""
+    
+    total_pairs = 0
+    correct_pairs = 0
+    invariant_errors = []
+    ranking_errors = []
+    
+    for i, item in enumerate(GOLD_SCORING_TEST):
+        text = item["text"]
+        predicate_surface = item["predicate_surface"]
+        entity_surfaces = item["entity_surfaces"]
+        expected_ranking = item["expected_ranking"]
+        
+        # Find predicate position
+        pred_start, pred_end = _find_surface_pos(text, predicate_surface)
+        if pred_start < 0:
+            invariant_errors.append({"i": i, "error": f"Predicate '{predicate_surface}' not found"})
+            continue
+        
+        # Find entity positions
+        entity_spans: dict[int, tuple[int, int]] = {}
+        search_from = 0
+        for j, surface in enumerate(entity_surfaces):
+            start, end = _find_surface_pos(text, surface, search_from)
+            if start < 0:
+                start, end = _find_surface_pos(text, surface, 0)
+            entity_spans[j] = (start, end)
+            search_from = end
+        
+        # Build EntityMention list
+        entity_mentions = [
+            EntityMention(mention_id=j, surface=surface, entity_id=surface.lower())
+            for j, surface in enumerate(entity_surfaces)
+        ]
+        
+        # Determine predicate_id
+        pred_surface_lower = predicate_surface.lower()
+        pred_id = pred_surface_lower
+        for alias, p_ids in _predicate_lexicon._alias_dict.items():
+            if pred_surface_lower == alias and p_ids:
+                pred_id = p_ids[0]
+                break
+        
+        # L2.2: Build hypothesis graph
+        hyp_graph = _arg_hyp_generator.generate(
+            observation_id=i,
+            predicate_id=pred_id,
+            entity_mentions=entity_mentions
+        )
+        
+        # L2.3 Phase 1: Build EvidenceGraph
+        evidence_graph = _evidence_graph_builder.build(
+            graph=hyp_graph,
+            text=text,
+            predicate_start=pred_start,
+            predicate_end=pred_end,
+            entity_spans=entity_spans
+        )
+        
+        # FIX 5: Completeness invariant - mọi hypothesis phải có evidence
+        if len(evidence_graph.hypothesis_evidence) != len(hyp_graph.hypotheses):
+            invariant_errors.append({
+                "i": i, "text": text[:40],
+                "error": f"Evidence count {len(evidence_graph.hypothesis_evidence)} != Hypothesis count {len(hyp_graph.hypotheses)}"
+            })
+            continue
+        
+        # L2.3 Phase 2: Score
+        scored_graph = _argument_scorer.score(evidence_graph)
+        
+        # FIX 5: Completeness invariant - mọi hypothesis phải có score
+        if len(scored_graph.scored_hypotheses) != len(hyp_graph.hypotheses):
+            invariant_errors.append({
+                "i": i, "text": text[:40],
+                "error": f"Scored count {len(scored_graph.scored_hypotheses)} != Hypothesis count {len(hyp_graph.hypotheses)}"
+            })
+            continue
+        
+        # Pairwise ranking check
+        for role_str, correct_entity_idx in expected_ranking.items():
+            role = Role(role_str)
+            correct_score = None
+            other_scores = []
+            
+            for sh in scored_graph.scored_hypotheses:
+                if sh.hypothesis.role == role:
+                    if sh.hypothesis.entity_mention_id == correct_entity_idx:
+                        correct_score = sh.score
+                    else:
+                        other_scores.append((sh.hypothesis.entity_mention_id, sh.score))
+            
+            if correct_score is None:
+                ranking_errors.append({
+                    "i": i, "text": text[:40],
+                    "error": f"Role '{role_str}': correct entity {correct_entity_idx} not found"
+                })
+                continue
+            
+            for other_idx, other_score in other_scores:
+                total_pairs += 1
+                if correct_score > other_score:
+                    correct_pairs += 1
+                else:
+                    ranking_errors.append({
+                        "i": i, "text": text[:40],
+                        "role": role_str,
+                        "correct_entity": f"({correct_entity_idx}, {entity_surfaces[correct_entity_idx]})",
+                        "correct_score": round(correct_score, 3),
+                        "wrong_entity": f"({other_idx}, {entity_surfaces[other_idx]})",
+                        "wrong_score": round(other_score, 3),
+                    })
+    
+    accuracy = correct_pairs / total_pairs if total_pairs > 0 else 0.0
+    
+    print("═" * 54)
+    print(f"  ARGUMENT SCORING BENCHMARK (Level 2.3)")
+    print("═" * 54)
+    print(f"  Phase: Pairwise Ranking + Completeness Invariant")
+    print("─" * 54)
+    print(f"  Ranking Accuracy:  {correct_pairs}/{total_pairs}  ({accuracy:.2%})")
+    print(f"  Invariant Errors:  {len(invariant_errors)}")
+    print("─" * 54)
+    if invariant_errors:
+        print(f"  Invariant Errors ({len(invariant_errors)}):")
+        for e in invariant_errors[:3]:
+            print(f"    [{e['i']}] {e['error']}")
+    if ranking_errors:
+        print(f"  Ranking Errors ({len(ranking_errors)}):")
+        for e in ranking_errors[:3]:
+            if "error" in e:
+                print(f"    [{e['i']}] {e['error']}")
+            else:
+                print(f"    [{e['i']}] \"{e['text']}...\"")
+                print(f"      Role: {e['role']}")
+                print(f"      Correct: {e['correct_entity']} = {e['correct_score']}")
+                print(f"      Wrong:   {e['wrong_entity']} = {e['wrong_score']}")
+    print("═" * 54)
+    print(f"  NOTE: Ranking + Completeness = L2.3 contract.")
+    print(f"  L2.4 (Assignment) will use ranking to optimize.")
+    print("═" * 54)
+
+GOLD_HYPOTHESIS_EXPANSION_TEST = [
+    {
+        "text": "Tao sửa bug bằng Python",
+        "predicate": "fix",
+        "entities": ["user", "bug", "python"],
+        "expected_roles": {"actor", "object", "tool"}
+    },
+    {
+        "text": "Tuệ Mẫn dùng SQLite",
+        "predicate": "use",
+        "entities": ["tue_man", "sqlite"],
+        "expected_roles": {"actor", "object", "tool"}
+    },
+    {
+        "text": "Tao deploy lên production",
+        "predicate": "deploy",
+        "entities": ["user", "production"],
+        "expected_roles": {"actor", "object", "target"}
+    },
+    {
+        "text": "Tao thích Flask hơn Django",
+        "predicate": "like",
+        "entities": ["user", "flask", "django"],
+        "expected_roles": {"actor", "object", "target"}
+    },
+    {
+        "text": "Tao ghét production mindset",
+        "predicate": "hate",
+        "entities": ["user", "production_mindset"],
+        "expected_roles": {"actor", "object", "target"}
+    },
+    # Unknown predicate phải trả graph rỗng
+    {
+        "text": "Tao refactor code",
+        "predicate": "__unknown__",
+        "entities": ["user", "code"],
+        "expected_roles": set()
+    },
+]
+
+def run_benchmark_arguments():
+    """L2.2 Benchmark: Exact Cross-Product Set Comparison (by mention_id)."""
+    
+    total_cases = 0
+    passed_cases = 0
+    errors = []
+    
+    for i, item in enumerate(GOLD_HYPOTHESIS_EXPANSION_TEST):
+        text = item["text"]
+        predicate_id = item["predicate"]
+        entities = item["entities"]
+        expected_roles = item["expected_roles"]
+        
+        entity_mentions = [
+            EntityMention(mention_id=j, surface=e, entity_id=e)
+            for j, e in enumerate(entities)
+        ]
+        
+        graph = _arg_hyp_generator.generate(
+            observation_id=i,
+            predicate_id=predicate_id,
+            entity_mentions=entity_mentions
+        )
+        
+        # So sánh bằng (mention_id, role) thay vì (surface, role)
+        expected_pairs = {
+            (mention_id, role_str)
+            for mention_id in range(len(entities))
+            for role_str in expected_roles
+        }
+        
+        generated_pairs = {
+            (h.entity_mention_id, h.role.value)
+            for h in graph.hypotheses
+        }
+        
+        total_cases += 1
+        if expected_pairs == generated_pairs:
+            passed_cases += 1
+        else:
+            missing = expected_pairs - generated_pairs
+            extra = generated_pairs - expected_pairs
+            errors.append({
+                "i": i, "text": text[:40],
+                "predicate": predicate_id,
+                "expected_count": len(expected_pairs),
+                "actual_count": len(generated_pairs),
+                "missing": list(missing),
+                "extra": list(extra)
+            })
+    
+    accuracy = passed_cases / total_cases if total_cases > 0 else 0.0
+    
+    print("═" * 54)
+    print(f"  HYPOTHESIS EXPANSION BENCHMARK (Level 2.2)")
+    print("═" * 54)
+    print(f"  Phase: Exact Set Comparison (Deterministic, Typed)")
+    print("─" * 54)
+    print(f"  Exact Match:  {passed_cases}/{total_cases}  ({accuracy:.2%})")
+    print("─" * 54)
+    if errors:
+        print(f"  Errors ({len(errors)}):")
+        for e in errors[:5]:
+            print(f"    [{e['i']}] \"{e['text']}...\"")
+            print(f"      Predicate: {e['predicate']}")
+            print(f"      Expected: {e['expected_count']} | Actual: {e['actual_count']}")
+            if e['missing']:
+                print(f"      Missing: {e['missing']}")
+            if e['extra']:
+                print(f"      Extra:   {e['extra']}")
+    print("═" * 54)
+    print(f"  NOTE: Exact Match=100% nghĩa là graph sinh đúng")
+    print(f"  cross-product (bởi mention_id), không thiếu, không thừa.")
+    print(f"  L2.3 (Resolution) sẽ gắn score lên từng edge.")
+    print("═" * 54)
+
+# ╔═══════════════════════════════════════════════════════════════╗
+# ║  GOLD DATASET & BENCHMARK (AUTO-SPAN)                         ║
 # ╚═══════════════════════════════════════════════════════════════╝
 
 GOLD_MENTIONS_TEST = [
@@ -3383,6 +5151,15 @@ def call_groq_ai(sender_id: str, user_message: str, metadata: dict = None):
             )
     threading.Thread(target=_run_mention_pipeline, daemon=True).start()
 
+    # LEVEL 2.1: PREDICATE PIPELINE (Deterministic + Queue Discovery)
+    def _run_predicate_pipeline():
+        _predicate_extractor.extract_and_link(user_message, obs_id)
+        try:
+            _pred_discovery_queue.put_nowait(user_message)
+        except _queue.Full:
+            log.debug("[PRED-DISC] Queue full, dropping discovery job")
+    threading.Thread(target=_run_predicate_pipeline, daemon=True).start()
+
     # 1. BACKWARD SPINE (Resolve previous prediction)
     graph = get_user_graph(sender_id)
     recent_interps = [n for n in graph.nodes.values() if n.type == NodeType.INTERPRETATION]
@@ -3421,7 +5198,7 @@ def call_groq_ai(sender_id: str, user_message: str, metadata: dict = None):
 
     # 5. BACKGROUND PROCESS
     try: get_mind(sender_id).process({"id": exp_id, "user_message": user_message, "intent": intent, "response": ai_text, "outcome": None})
-    except: pass
+    except Exception: log.debug("[call_groq_ai] background mind.process failed, ignored", exc_info=True)
 
     background_learning_async(sender_id, user_message)
 
@@ -4503,6 +6280,14 @@ if __name__ == "__main__":
     elif "--benchmark-e2e" in sys.argv:
         verify_gold_spans()
         run_benchmark_e2e()
+    elif "--benchmark-predicate" in sys.argv:
+        run_benchmark_predicate()
+    elif "--benchmark-arguments" in sys.argv:
+        run_benchmark_arguments()
+    elif "--benchmark-scoring" in sys.argv:
+        run_benchmark_scoring()
+    elif "--benchmark-resolution" in sys.argv:   
+        run_benchmark_resolution()                      
     elif "--verify" in sys.argv:
         verify_gold_spans()
     else:
