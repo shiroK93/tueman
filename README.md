@@ -5,15 +5,15 @@
                                                              /  .  \
                                                             |\_/|   |
                                                             |   |  /|
-  .------------------------------------------------------------------------' |
- /  .-.                                                                      |
-|  /   \      An AI that understands one person through accumulated evidence.|
-| |\_.  |                                                                    |
-|\|  | /|              Built for depth. Not for scale.                       |
-| `---' |                                                                    |
-|       |        Probably overkill. Definitely intentional.                  |
-|       |                                                                    /
-|       |--------------------------------------------------------------------'
+  .----------------------------------------------------------------' |
+ /  .-.                                                              |
+|  /   \      An AI that remembers everything about one person.      |
+| |\_.  |                                                            |
+|\|  | /|              Built for depth. Not for scale.               |
+| `---' |                                                            |
+|       |        Probably overkill. Definitely intentional.          |
+|       |                                                           /
+|       |----------------------------------------------------------'
 \       |
  \     /
   `---'
