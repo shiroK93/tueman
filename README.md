@@ -5,15 +5,15 @@
                                                              /  .  \
                                                             |\_/|   |
                                                             |   |  /|
-  .----------------------------------------------------------------' |
- /  .-.                                                              |
-|  /   \      An AI that remembers everything about one person.      |
-| |\_.  |                                                            |
-|\|  | /|              Built for depth. Not for scale.               |
-| `---' |                                                            |
-|       |        Probably overkill. Definitely intentional.          |
-|       |                                                           /
-|       |----------------------------------------------------------'
+  .------------------------------------------------------------------------' |
+ /  .-.                                                                      |
+|  /   \      An AI that understands one person through accumulated evidence.|
+| |\_.  |                                                                    |
+|\|  | /|              Built for depth. Not for scale.                       |
+| `---' |                                                                    |
+|       |        Probably overkill. Definitely intentional.                  |
+|       |                                                                    /
+|       |--------------------------------------------------------------------'
 \       |
  \     /
   `---'
@@ -32,9 +32,15 @@ The objective is not to answer questions.
 
 The objective is to build understanding.
 
+Understanding is treated as an emergent property of accumulated evidence, not something produced by a single model invocation.
+
+Tuệ Mẫn is not built to know everyone.
+
+It is built to understand one person deeply enough that every new observation becomes part of a coherent life story.
+
 ---
 
-## The premise 🥀
+## The premise
 
 Most AI systems are built for millions of users.
 
@@ -50,14 +56,13 @@ Tuệ Mẫn is the opposite bet.
 **One user. Total understanding. No compromises.**
 
 ```
-Production AI          │  Tuệ Mẫn
-───────────────────────┼──────────────────────────────────────────
-1,000,000 users        │  1 user. permanent.
-~100 memories/user     │  100,000+ memories
-"remembers your name"  │  remembers the version of you from 6 months ago
-answer first           │  understand first
-confident about nothing│  uncertain until the evidence says otherwise
-goldfish memory 🐟     │  elephant memory 🐘
+Production AI           │  Tuệ Mẫn
+────────────────────────┼──────────────────────────────────────────
+1,000,000 users         │  1 user. permanent.
+~100 memories/user      │  100,000+ memories
+"remembers your name"   │  remembers the version of you from 6 months ago
+answer first            │  understand first
+confident without evidence │  uncertain until the evidence says otherwise
 ```
 
 Not a product. Not a SaaS. Not a Series A pitch.  
@@ -77,12 +82,12 @@ Knowledge is accumulated.
 
 Memory is never rewritten.
 
-The world has enough chatbots that are very confident about things they made up. 🗿  
+The world has enough systems that are confident about things they made up.  
 This one is built differently.
 
 ---
 
-## Cognitive Architecture 💀
+## Cognitive Architecture
 
 Six layers. One direction. No exceptions.
 
@@ -92,7 +97,6 @@ Layer 0 ─ Observation
 │  Immutable.
 │  Append-only.
 │  Source of truth.
-│  Touch it and the whole system collapses. 💀
 │
 ▼
 Layer 1 ─ Extraction
@@ -134,7 +138,7 @@ Layer 5 ─ Identity
 
 Each layer only sees what the layer below it produced.  
 No layer can reach down and change what already happened.  
-This is not a guideline. It is structural enforcement. 🥀
+This is not a guideline. It is structural enforcement.
 
 ---
 
@@ -173,8 +177,7 @@ Identity
 ```
 
 Information flows upward only.  
-Conclusions cannot corrupt their own evidence.  
-This is how the system avoids gaslighting itself. 🥲
+Conclusions cannot corrupt their own evidence.
 
 ---
 
@@ -186,8 +189,7 @@ Layer 2 produces hypothesis distributions.
 Layer 3 accumulates evidence over time before committing to beliefs.
 
 The system holds uncertainty as a first-class value.  
-It doesn't collapse to a confident answer until the evidence warrants it.  
-Somehow this is extremely rare in AI systems. 🤡
+It doesn't collapse to a confident answer until the evidence warrants it.
 
 ---
 
@@ -199,17 +201,23 @@ History is preserved.
 
 The system remembers *why* something became true.  
 If it was wrong, it remembers that too.  
-Dead beliefs don't persist. The system can lose gracefully. 💀
+Dead beliefs don't persist. The system can lose gracefully.
 
 ---
 
-## What it actually does 🔍
+## Core Architecture
 
-### Mention Extraction + Entity Registry
+Implemented Foundation
 
-Before meaning: recognition.
+---
 
-Every message goes through a full extraction pipeline:
+### Layer 0 — Observation
+
+Immutable observation pipeline. Append-only. Source of truth. Firewalled from everything above.
+
+---
+
+### Layer 1 — Extraction
 
 ```
 Message
@@ -221,33 +229,39 @@ EntityRegistry (persisted, versioned aliases)
 AliasResolution → EntityLinking → BM25Retrieval
 ```
 
-It knows the difference between "he", "the guy", "Minh", and "that dude from the coffee shop last week" — because it built an alias graph.
+Knows the difference between "he", "the guy", "Minh", and "that dude from the coffee shop last week" — because it built an alias graph.
 
 Vietnamese capitalization edge cases? Handled.  
 CamelCase tech names mid-sentence? Handled.  
 Multi-word entity disambiguation? Handled.
 
-**Span F1 on the gold dataset: 93%.** 🎯
+**Mention Extraction Span F1: 93%.** 🎯
 
 ---
 
-### GraphLens — the same event hits different
-
-When an event gets interpreted, it doesn't go through a neutral processor.  
-It goes through a **GraphLens** — the system's full cognitive state at that exact moment:
+### Layer 2 — Interpretation
 
 ```
 Event
   ↓
-GraphLens(active_concepts, unresolved_tensions, historical_biases, mood)
+Predicate Detection
   ↓
-Interpretation (confidence-scored, emotion-tagged)
+Argument Hypothesis Generation + Role Scoring
   ↓
-Concept Graph
+CSP Preprocessing + AC-3 Domain Pruning
+  ↓
+Exact DFS Search + Constraint Evaluation
+  ↓
+Hypothesis Distribution → ReasoningSession Artifact
 ```
 
-The same message on a bad day vs. a good day produces genuinely different interpretations.  
-This is a feature. Not a bug. Cognitive realism. 🥀
+Layer 2 transforms observations into structured event hypotheses while preserving uncertainty and provenance.
+
+---
+
+## Experimental Components
+
+Built on top of the frozen layers. These drive current conversational behavior and inform Layer 3 design.
 
 ---
 
@@ -261,40 +275,35 @@ predictions about your future behavior that *cannot* be explained by the input t
 - Prediction confirms → belief gets stronger  
 - Prediction expires → belief decays  
 - Prediction gets refuted → belief takes damage  
-- Belief can't predict anything → quietly buried 💀
+- Belief can't predict anything → quietly buried
 
 The system can be wrong and it knows how to lose.  
 This is how it avoids becoming a yes-machine.
 
 ---
 
-### Voice Resolution Engine
+### Voice Resolution
 
-Before every single reply, a `VoiceResolutionEngine` runs.
+Before every reply, a `VoiceResolutionEngine` runs.
 
-It outputs:
-- `warmth` — how soft or direct to be
-- `roast_score` — yes, this is a real field. yes, it goes up.
-- `interaction_mode` — natural / reflective / challenge / roast
-- `dominant_voice` — which internal stance wins this turn
+Multiple internal voices compete. One wins. The reply reflects it.
 
-Multiple internal voices compete. One wins. The reply reflects it.  
+Outputs: `warmth`, `roast_score`, `interaction_mode`, `dominant_voice`.  
 Some turns it's warm. Some turns it will clown you.  
-The balance is computed from everything it knows about you. 🤡
+The balance is computed from everything it knows about you.
 
 ---
 
 ### Backward Spine
 
-After every exchange, the system runs `backward_spine`:
+After every exchange, the system runs error scoring:
 
-- **Behavior error detection** — did you react the way it predicted?
-- **Perception error scoring** — was its interpretation of your last message wrong?
-- If perception error > 0.5: beliefs get flagged for contradiction
-- If perception error > 0.7: `log_surprise()` fires — the system literally logs when it's surprised by you
+- Did you react the way it predicted?
+- Was its interpretation of your last message wrong?
+- If perception error > 0.5: beliefs get flagged for contradiction.
+- If perception error > 0.7: `log_surprise()` fires.
 
-Getting surprised enough times by the same type of moment actually changes how it models you.  
-Genuinely frightening. 🥲
+Getting surprised enough times by the same moment actually changes how it models you. 🥲
 
 ---
 
@@ -302,11 +311,8 @@ Genuinely frightening. 🥲
 
 A first-class signal: `worldview_entropy` (0.0 → certain, 1.0 → lost).
 
-High entropy = multiple contradictory models of you are active. System observes more, asserts less.  
-Low entropy = confident picture. More direct. More roasting. More conviction.
-
-Entropy is live in the UI. You can watch it shift.  
-Absolute cinema. 🥀
+High entropy = contradictory models of you are active. System observes more, asserts less.  
+Low entropy = confident picture. More direct. More conviction.
 
 ---
 
@@ -314,72 +320,46 @@ Absolute cinema. 🥀
 
 ```
 python bot7.py --verify                  # validate gold dataset spans
-python bot7.py --benchmark               # recognition: Dict vs Hybrid, Span F1
+python bot7.py --benchmark               # recognition: Dict vs Hybrid
 python bot7.py --benchmark-discovery     # discovery: Regex precision/recall
 python bot7.py --benchmark-e2e           # end-to-end pipeline
 
 Results → benchmark_history.json
 ```
 
+All benchmark datasets are manually curated to measure extraction quality independently from downstream reasoning.
+
 ```
 Layer 2 unlock conditions:
   ✓ Dataset ≥ 100 samples
-  ✓ Recognition Span F1 ≥ 85%    →  achieved: 93% 🎯
+  ✓ Mention Extraction Span F1 ≥ 85%    →  achieved: 93%
   ✓ Benchmark deterministic across runs
 
-LAYER 2: LOCKED. 🔒
+LAYER 2: LOCKED.
 ```
 
 ---
 
-## Current Status
+## Research Roadmap
 
 ```
 Layer 0 ─ Observation    ✅ Locked
 Layer 1 ─ Extraction     ✅ Locked
 Layer 2 ─ Interpretation ✅ Locked
 Layer 3 ─ Beliefs        🚧 In development
-Layer 4 ─ Reflection     [ ] Locked
-Layer 5 ─ Identity       [ ] Locked
+Layer 4 ─ Reflection     ○  Future research
+Layer 5 ─ Identity       ○  Future research
 ```
 
 **Active milestone:** Layer 3 — build persistent beliefs from observations without violating the immutability guarantees of Layers 0–2.
 
 ---
 
-### Layer 0 ✅ Locked
+### Layers 0–2 ✅ Locked
 
-- Immutable observation pipeline
-- Append-only. Source of truth. Firewalled.
+Observation pipeline. Mention extraction. Entity registry. Alias resolution. Entity linking. BM25 retrieval. Predicate detection. Argument resolution. Constraint satisfaction. Hypothesis distribution. ReasoningSession artifact. Benchmark framework. Gold dataset.
 
----
-
-### Layer 1 ✅ Locked
-
-- Mention Extraction (Dict + Hybrid LLM)
-- Entity Registry + Alias Resolution
-- Entity Linking + BM25 Retrieval
-- Benchmark Framework (recognition / discovery / e2e)
-- Gold Dataset — 93% Span F1
-
----
-
-### Layer 2 ✅ Locked
-
-- Predicate Detection + Argument Resolution
-- CSP Preprocessing + AC-3 Domain Pruning
-- Exact DFS Search + Constraint Evaluation
-- Hypothesis Distribution
-- ReasoningSession artifact
-- GraphLens + InterpretationEngine
-- Concept Graph + Cognitive Nodes/Edges
-- VoiceResolutionEngine (warmth, roast_score, dominant_voice)
-- Hypothesis Market + OrthogonalPredictions
-- WorldviewEntropy
-- BackwardSpine (behavior + perception error)
-- SelfModelEngine + SelfModelTracker
-- ReflectionA + ReflectionB
-- NuanceEngine
+No architectural expansion. Bug fixes and benchmark improvements only.
 
 ---
 
@@ -393,6 +373,77 @@ Layer 5 ─ Identity       [ ] Locked
 - [ ] Belief revision
 - [ ] Event merging
 - [ ] Temporal reasoning
+
+---
+
+### Layers 4–5 ○ Future research
+
+Layers 4–5 remain intentionally undefined.
+
+Their purpose is understood.
+
+Their implementation is not.
+
+They will emerge only after Layer 3 proves stable.
+
+The architecture will follow the evidence, not the roadmap.
+
+---
+
+## Why another AI memory project?
+
+Most conversational systems remember messages.
+
+Tuệ Mẫn attempts to remember experiences.
+
+Rather than storing conversations, it builds a structured model of the user's world from evidence accumulated over time.
+
+The project favors correctness, provenance, and gradual understanding over immediate answers.
+
+---
+
+## What this is not
+
+```
+✗ SaaS          ✗ Multi-user
+✗ Production    ✗ Growth-hacked
+✗ VC-fundable   ✗ Sane
+```
+
+## What this is
+
+```
+✓ An experiment in machine understanding
+✓ A cognitive architecture that evolves from lived experience
+✓ Every conclusion traceable. Every belief earned.
+✓ The single most over-engineered personal AI on earth
+✓ Entirely intentional
+✓ Absolute cinema 🥀
+```
+
+---
+
+## Philosophy
+
+The deepest question here isn't technical.
+
+> *What does it mean for a machine to understand a person?*
+
+Not to process their messages.  
+Not to respond appropriately.  
+Not to pass a Turing test.
+
+But to actually *understand* —  
+to hold the full weight of someone's context, contradictions, patterns, growth, fears, inside jokes, and mistakes —  
+and to still be present in the next conversation  
+like none of it was forgotten.
+
+Every conclusion must be traceable back to something real.  
+Every belief must be earned from evidence.  
+Nothing is allowed to rewrite history.
+
+We're closer now.  
+But that's still where we're going.
 
 ---
 
@@ -433,66 +484,6 @@ python bot7.py
 # open http://localhost:5000
 # that's it. no ngrok. no webhook. no meta. just run it.
 ```
-
----
-
-## Why another AI memory project?
-
-Most conversational systems remember messages.
-
-Tuệ Mẫn attempts to remember experiences.
-
-Rather than storing conversations, it builds a structured model of the user's world from evidence accumulated over time.
-
-The project favors correctness, provenance, and gradual understanding over immediate answers.
-
-There are already enough systems that sound confident about things they invented. 🥀  
-This one earns it.
-
----
-
-## What this is not
-
-```
-✗ SaaS          ✗ Multi-user
-✗ Production    ✗ Growth-hacked
-✗ VC-fundable   ✗ Sane 💀
-```
-
-## What this is
-
-```
-✓ An experiment in machine understanding
-✓ A cognitive architecture that evolves from lived experience
-✓ Every conclusion traceable. Every belief earned.
-✓ The single most over-engineered personal AI on earth 🥀
-✓ Entirely intentional
-✓ Absolute cinema
-```
-
----
-
-## Philosophy
-
-The deepest question here isn't technical.
-
-> *What does it mean for a machine to understand a person?*
-
-Not to process their messages.  
-Not to respond appropriately.  
-Not to pass a Turing test.
-
-But to actually *understand* —  
-to hold the full weight of someone's context, contradictions, patterns, growth, fears, inside jokes, and mistakes —  
-and to still be present in the next conversation  
-like none of it was forgotten.
-
-Every conclusion must be traceable back to something real.  
-Every belief must be earned from evidence.  
-Nothing is allowed to rewrite history.
-
-We're closer now. 🥲  
-But that's still where we're going.
 
 ---
 
