@@ -246,17 +246,36 @@ perception must remain uncorrupted by conclusion.
 ## Architecture at a glance
 
 ```
-Layer 0 — Observation     (immutable, sacred, firewalled)
-    ↓
-Layer 1 — Extraction      (Mention → Entity → BM25)   ← 93% Span F1 ✓ UNLOCKED
-    ↓
-Layer 2 — Interpretation  (GraphLens → Concept Graph)  ← NOW ACTIVE 🔓
-    ↓
-Layer 3 — Cognition       (Beliefs, Hypotheses, Voice, Identity)
+Layer 0 ─ Observation
+           immutable, append-only, firewalled
+                     │
+                     ▼
+Layer 1 ─ Extraction
+           Mention → Entity → Registry → Retrieval
+           benchmark-gated (93% Span F1 ✓)
+                     │
+                     ▼
+Layer 2 ─ Interpretation
+           Events • Relations • Concept Graph
+                     │
+                     ▼
+Layer 3 ─ Cognition
+           Beliefs • Hypotheses • Voice
+                     │
+                     ▼
+Layer 4 ─ Reflection
+           Trends • Self-evaluation • Pattern synthesis
+                     │
+                     ▼
+Layer 5 ─ Identity
+           Stable principles • Personality • Long-term self
 
-                    ↕  (backward_spine, reflection, entropy)
+────────────────────────────────────────────────────────
 
-Layer 7.58 — MeaningEngine (reads observation only. firewall enforced.)
+MeaningEngine (v7.58)
+Reads Observation only.
+Cannot modify any lower layer.
+Firewall enforced.
 ```
 
 ---
